@@ -1,11 +1,10 @@
 from dotenv import load_dotenv
+import os
 
 load_dotenv()
 
 
 def get_required_secret(key: str) -> str:
-    import os
-
     value = os.getenv(key)
     if value is None:
         raise EnvironmentError(
@@ -16,3 +15,4 @@ def get_required_secret(key: str) -> str:
 
 bot_token = get_required_secret("BOT_TOKEN")
 DATABASE_URL = get_required_secret("DATABASE_URL")
+debug = True if os.getenv("DEBUG", "True").lower() == "true" else False
