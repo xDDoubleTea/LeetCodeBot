@@ -12,7 +12,6 @@ class Problem(Base):
     url: Mapped[str] = mapped_column(nullable=False)
     difficulty: Mapped[int] = mapped_column(nullable=False)
     description: Mapped[str] = mapped_column(nullable=True)
-    thread_id: Mapped[str] = mapped_column(nullable=True)
 
 
 class TopicTags(Base):
