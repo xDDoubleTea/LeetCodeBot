@@ -221,6 +221,7 @@ dependencies = [
     { name = "dotenv" },
     { name = "flask" },
     { name = "flask-sqlalchemy" },
+    { name = "prettyprint" },
     { name = "sqlalchemy" },
 ]
 
@@ -231,6 +232,7 @@ requires-dist = [
     { name = "dotenv", specifier = ">=0.9.9" },
     { name = "flask", specifier = ">=3.1.2" },
     { name = "flask-sqlalchemy", specifier = ">=3.1.1" },
+    { name = "prettyprint", specifier = ">=0.1.5" },
     { name = "sqlalchemy", specifier = ">=2.0.44" },
 ]
 
@@ -547,6 +549,12 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/7f/ae/3148b988a9c6239903e786eac19c889fab607c31d6efa7fb2147e5680f23/multidict-6.7.0-cp314-cp314t-win_arm64.whl", hash = "sha256:cc41db090ed742f32bd2d2c721861725e6109681eddf835d0a82bd3a5c382827", size = 44804, upload-time = "2025-10-06T14:51:55.415Z" },
     { url = "https://files.pythonhosted.org/packages/b7/da/7d22601b625e241d4f23ef1ebff8acfc60da633c9e7e7922e24d10f592b3/multidict-6.7.0-py3-none-any.whl", hash = "sha256:394fc5c42a333c9ffc3e421a4c85e08580d990e08b99f6bf35b4132114c5dcb3", size = 12317, upload-time = "2025-10-06T14:52:29.272Z" },
 ]
+
+[[package]]
+name = "prettyprint"
+version = "0.1.5"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/13/9c/495a32e19f94fdd402bffc1c90abd84f2f604595ab480a3087dd77a94502/prettyprint-0.1.5.tar.gz", hash = "sha256:7423210b62adfb3777677914cd25db4919f1c2b0afba0454365ffbfa3f7e3731", size = 2119, upload-time = "2012-02-23T19:30:55.708Z" }
 
 [[package]]
 name = "propcache"

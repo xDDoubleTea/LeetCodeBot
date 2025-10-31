@@ -2,7 +2,7 @@ from core.leetcode_api import LeetCodeAPI
 from db.database_manager import DatabaseManager
 from db.problem import Problem, ProblemTags, TopicTags
 from typing import Dict, Set
-from sqlalchemy import select, insert
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
 
@@ -21,8 +21,8 @@ class LeetCodeProblemManager:
         """
         try:
             problems = await self.get_problems_from_db()
+            print(f"Loaded {len(problems)} problems from the database into cache.")
             for problem in problems:
-                print(f"Loading problem {problem.problem_id} into cache")
                 self.problem_cache[problem.problem_id] = {
                     "problem": problem,
                     "tags": set(await self.get_problem_tags_from_db(problem.id)),
@@ -40,10 +40,16 @@ class LeetCodeProblemManager:
         """
         try:
             problems = await self.leetcode_api.fetch_all_problems()
-            with self.database_mananger as db:
-                for problem_id, problem in problems.items():
-                    db.merge(problem["problem"])
-                    self.problem_cache[problem_id] = problem
+            for problem_id, problem in problems.items():
+                try:
+                    assert isinstance(problem["tags"], set) and isinstance(
+                        problem["problem"], Problem
+                    )
+                    await self.add_problem_to_db(problem["problem"], problem["tags"])
+                except IntegrityError:
+                    print("Problem already exists in the database.")
+                    continue
+                self.problem_cache[problem_id] = problem
         except Exception as e:
             raise Exception(e)
 
@@ -86,6 +92,24 @@ class LeetCodeProblemManager:
             except Exception as e:
                 raise Exception(e)
         return result
+
+    async def get_daily_problem(self) -> Dict[str, Problem | Set[TopicTags]] | None:
+        """
+        Retrieves the daily problem from LeetCode.
+        """
+        try:
+            problem_data = await self.leetcode_api.fetch_daily()
+            if not problem_data:
+                return None
+            problem = problem_data["problem"]
+            tags = problem_data["tags"]
+            assert isinstance(tags, set) and isinstance(problem, Problem)
+            await self.add_problem_to_db(problem, tags)
+            result = {"problem": problem, "tags": tags}
+            self.problem_cache[problem.problem_id] = result
+            return result
+        except Exception as e:
+            raise Exception(e)
 
     async def add_problem_to_db(self, problem: Problem, tags: Set[TopicTags]) -> None:
         with self.database_mananger as db:
