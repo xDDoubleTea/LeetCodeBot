@@ -9,10 +9,17 @@ from db.problem import Problem, TopicTags
 from models.leetcode import ProblemDifficulity
 
 
+class FetchError(Exception):
+    pass
+
+
 class LeetCodeAPI:
     def __init__(self) -> None:
         self._base_url = "https://leetcode-api-pied.vercel.app"
         self._github_url = "https://raw.githubusercontent.com/noworneverev/leetcode-api/refs/heads/main/data/leetcode_questions.json"
+        self._github_headers = {
+            "content-type": "application/json",
+        }
 
     async def health_check(self) -> str:
         async with aiohttp.ClientSession() as session:
@@ -117,15 +124,17 @@ class LeetCodeAPI:
         self, response: aiohttp.ClientResponse, error_message: str
     ) -> dict:
         if response.status == 200:
-            return await response.json()
+            return await response.json(content_type="text/plain")
         else:
-            raise Exception(f"{error_message}: {response.status}")
+            raise FetchError(f"{error_message}: {response.status}")
 
     async def fetch_all_problems(
         self,
     ) -> Dict[int, Dict[str, Problem | Set[TopicTags]]]:
         async with aiohttp.ClientSession() as session:
-            async with session.get(url=self._github_url) as response:
+            async with session.get(
+                headers=self._github_headers, url=self._github_url
+            ) as response:
                 validated_response_json = await self._vaildate_response(
                     response, "Failed to fetch all problems"
                 )
