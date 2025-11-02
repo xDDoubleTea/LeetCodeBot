@@ -5,6 +5,7 @@ from db.problem import Problem
 from db.thread_channel import GuildForumChannel
 from db.problem_threads import ProblemThreads
 from core.leetcode_problem import LeetCodeProblemManager
+from config.secrets import debug
 
 
 class ProblemThreadsManager:
@@ -92,7 +93,8 @@ class ProblemThreadsManager:
                 ProblemThreads.forum_channel_db_id == forum_channel.id,
             )
             problem_thread = db.execute(stmt).scalars().first()
-
+            if debug:
+                print(problem_thread)
             if problem_thread:
                 return problem_thread
         return None
@@ -109,6 +111,7 @@ class ProblemThreadsManager:
             if not problem:
                 return None
             problem = problem["problem"]
+            print(problem)
             assert isinstance(problem, Problem)
 
             problem_thread = ProblemThreads(

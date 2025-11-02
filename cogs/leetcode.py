@@ -6,7 +6,9 @@ from discord.embeds import Embed
 from discord.ext import commands
 from core.leetcode_api import FetchError
 from utils.discord_utils import try_get_channel
-from discord.ext import tasks
+
+from config.constants import preview_len
+from config.secrets import debug
 
 from db.problem import Problem, TopicTags
 from main import LeetCodeBot
@@ -20,12 +22,6 @@ class LeetCode(commands.Cog):
         self.leetcode_problem_manager = bot.leetcode_problem_manger
         self.leetcode_api = bot.leetcode_api
         self.problem_threads_manager = bot.problem_threads_manager
-
-    @tasks.loop(hours=24 * 7, name="weekly_cache_refresh")
-    async def weekly_cache_refresh(self) -> None:
-        print("Refreshing LeetCode problems cache...")
-        await self.leetcode_problem_manager.refresh_cache()
-        print("LeetCode problems cache refreshed.")
 
     @staticmethod
     def get_difficulty_str_repr(difficulty_db_repr: int) -> str:
@@ -41,6 +37,17 @@ class LeetCode(commands.Cog):
             return difficulty.embed_color
         except Exception:
             return discord.Color.blue()  # Default to blue if unknown
+
+    async def parse_problem_desc(self, content: str) -> str:
+        """
+        Parses the problem description from the LeetCode API response.
+        """
+        if not content:
+            return "No description available."
+        return content[:preview_len] + ("..." if len(content) > preview_len else "")
+
+    async def get_problem_desc_picture(self, problem: Problem) -> str:
+        return ""
 
     async def get_problem_desc_embed(
         self, problem: Problem, problem_tags: Set[TopicTags]
@@ -107,8 +114,61 @@ class LeetCode(commands.Cog):
         return thread
 
     @app_commands.command(name="daily", description="Get today's LeetCode problem")
+    @app_commands.guild_only()
     async def daily_problem(self, interaction: Interaction) -> None:
-        await interaction.response.send_message("This command is not implemented yet.")
+        await interaction.response.defer(thinking=True)
+        problem = await self.leetcode_problem_manager.get_daily_problem()
+        if debug:
+            print(problem)
+        if not problem:
+            await interaction.followup.send("Daily problem not found.")
+            return
+
+        problem_obj = problem["problem"]
+        assert isinstance(problem_obj, Problem)
+        assert isinstance(problem["tags"], Set)
+        assert interaction.guild
+        channel = await self.problem_threads_manager.get_forum_channel(
+            interaction.guild.id
+        )
+        if not channel:
+            await interaction.followup.send(
+                "The bot doesn't know which Fourm Channel should the problem be created! Please use /set_thread_channel first to set the Fourm Channel!"
+            )
+            return
+        forum_channel = await try_get_channel(
+            guild=interaction.guild, channel_id=channel.channel_id
+        )
+        if not isinstance(forum_channel, ForumChannel):
+            await interaction.followup.send(
+                "Something went wrong! The forum channel is not found or not a valid forum channel. Contact the developer for help."
+            )
+            return
+        forum_thread = await self.problem_threads_manager.get_thread_by_problem_id(
+            problem_obj.problem_id, interaction.guild.id
+        )
+        if not forum_thread:
+            thread = await self._create_thread(
+                channel=forum_channel,
+                problem=problem_obj,
+                problem_tags=problem["tags"],
+                is_daily=True,
+            )
+            await interaction.followup.send(
+                f"Created thread for today's problem in {thread.thread.mention}."
+            )
+        else:
+            thread_channel = await try_get_channel(
+                guild=interaction.guild, channel_id=forum_thread.thread_id
+            )
+            if not thread_channel:
+                await interaction.followup.send(
+                    "The thread for today's problem was supposed to exist but cannot be found. It might have been deleted."
+                )
+                return
+            await interaction.followup.send(
+                f"Thread for today's problem already exists: {thread_channel.mention}"
+            )
 
     @app_commands.command(
         name="problem",
@@ -148,13 +208,13 @@ class LeetCode(commands.Cog):
             )
             if not forum_thread:
                 assert isinstance(problem["tags"], Set)
-                await self._create_thread(
+                thread = await self._create_thread(
                     channel=forum_channel,
                     problem=problem_obj,
                     problem_tags=problem["tags"],
                 )
                 await interaction.followup.send(
-                    f"Created thread for problem {id} in {forum_channel.mention}."
+                    f"Created thread for problem {id} in {thread.thread.mention}."
                 )
             else:
                 thread_channel = await try_get_channel(

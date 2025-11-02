@@ -71,6 +71,12 @@ class LeetCodeProblemManager:
 
             return results
 
+    async def get_problem_from_db(self, problem_id: int) -> Problem | None:
+        with self.database_mananger as db:
+            stmt = select(Problem).where(Problem.problem_id == problem_id)
+            problem = db.execute(stmt).scalars().first()
+            return problem
+
     async def get_problem(
         self, problem_id: int
     ) -> Dict[str, Problem | Set[TopicTags]] | None:
@@ -80,6 +86,13 @@ class LeetCodeProblemManager:
         result = self.problem_cache.get(problem_id, None)
         if not result:
             try:
+                problem = await self.get_problem_from_db(problem_id)
+                if problem:
+                    tags = set(await self.get_problem_tags_from_db(problem.id))
+                    result = {"problem": problem, "tags": tags}
+                    self.problem_cache[problem_id] = result
+                    return result
+
                 problem_data = await self.leetcode_api.fetch_problem_by_id(problem_id)
                 if not problem_data:
                     return None
@@ -104,7 +117,11 @@ class LeetCodeProblemManager:
             problem = problem_data["problem"]
             tags = problem_data["tags"]
             assert isinstance(tags, set) and isinstance(problem, Problem)
+            if problem_db := await self.get_problem(problem.problem_id):
+                print(problem_db)
+                return problem_db
             await self.add_problem_to_db(problem, tags)
+
             result = {"problem": problem, "tags": tags}
             self.problem_cache[problem.problem_id] = result
             return result
@@ -125,6 +142,7 @@ class LeetCodeProblemManager:
                 )
                 if existing_problem:
                     problem = existing_problem
+                db.flush()
             for tag in tags:
                 existing_tag = (
                     db.query(TopicTags)
