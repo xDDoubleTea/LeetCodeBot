@@ -9,6 +9,13 @@ class GuildForumChannel(Base):
     channel_id: Mapped[int] = mapped_column(nullable=False, unique=True)
     guild_id: Mapped[int] = mapped_column(nullable=False)
 
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "channel_id": self.channel_id,
+            "guild_id": self.guild_id,
+        }
+
 
 class GuildForumChannelTags(Base):
     __tablename__ = "guild_forum_channel_tags"
@@ -17,3 +24,10 @@ class GuildForumChannelTags(Base):
         ForeignKey(GuildForumChannel.id, ondelete="CASCADE"), nullable=False
     )
     tag_name: Mapped[str] = mapped_column(nullable=False)
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "forum_channel_id": self.forum_channel_id,
+            "tag_name": self.tag_name,
+        }

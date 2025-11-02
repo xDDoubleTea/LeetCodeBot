@@ -11,6 +11,7 @@ from db.database_manager import DatabaseManager
 from sqlalchemy import create_engine
 import os
 from config.secrets import debug
+from discord.ext import tasks
 
 
 class LeetCodeBot(commands.Bot):
@@ -32,8 +33,6 @@ class LeetCodeBot(commands.Bot):
         for cog in os.listdir("cogs"):
             if cog.endswith(".py"):
                 await self.load_extension(f"cogs.{cog[:-3]}")
-        if not debug:
-            await self.leetcode_problem_manger.refresh_cache()
         await self.leetcode_problem_manger.init_cache()
 
     async def close(self) -> None:
@@ -43,7 +42,13 @@ class LeetCodeBot(commands.Bot):
     async def on_ready(self):
         self.tree.copy_global_to(guild=MY_GUILD)
         await self.tree.sync(guild=MY_GUILD)
+        if not debug:
+            await weekly_cache_refresh.start(self)
         print(f"Logged in as {self.user}!")
+        await self.change_presence(
+            status=discord.Status.online,
+            activity=discord.Game("Leetcode Bot"),
+        )
 
 
 async def main():
@@ -56,6 +61,13 @@ async def main():
     except Exception as e:
         print(f"An error occurred: {e}")
         exit(1)
+
+
+@tasks.loop(hours=24 * 7, name="weekly_cache_refresh")
+async def weekly_cache_refresh(bot: LeetCodeBot) -> None:
+    print("Refreshing LeetCode problems cache...")
+    await bot.leetcode_problem_manger.refresh_cache()
+    print("LeetCode problems cache refreshed.")
 
 
 if __name__ == "__main__":

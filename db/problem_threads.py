@@ -15,3 +15,11 @@ class ProblemThreads(Base):
         ForeignKey(GuildForumChannel.id, ondelete="CASCADE"), nullable=False
     )
     thread_id: Mapped[int] = mapped_column(nullable=False, unique=True)
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "problem_db_id": self.problem_db_id,
+            "forum_channel_db_id": self.forum_channel_db_id,
+            "thread_id": self.thread_id,
+        }
