@@ -7,12 +7,20 @@ from bs4 import BeautifulSoup
 from config.constants import preview_len
 from db.problem import Problem, TopicTags
 from models.leetcode import ProblemDifficulity
+from config.secrets import debug
+
+
+class FetchError(Exception):
+    pass
 
 
 class LeetCodeAPI:
     def __init__(self) -> None:
         self._base_url = "https://leetcode-api-pied.vercel.app"
         self._github_url = "https://raw.githubusercontent.com/noworneverev/leetcode-api/refs/heads/main/data/leetcode_questions.json"
+        self._github_headers = {
+            "content-type": "application/json",
+        }
 
     async def health_check(self) -> str:
         async with aiohttp.ClientSession() as session:
@@ -45,6 +53,35 @@ class LeetCodeAPI:
         if len(text_only.strip()) > preview_len:
             problem_md += "..."
         return problem_md
+
+    async def parse_daily_problem_response(self, response_json: dict):
+        response_url = response_json.get("link", "")
+        response_problem = response_json.get("question", {})
+        if debug:
+            print(response_url)
+            print(response_problem)
+        try:
+            problem = Problem(
+                title=response_problem.get("title", ""),
+                problem_id=response_problem.get("questionId", 0),
+                url=response_url,
+                difficulty=ProblemDifficulity.from_str_repr(
+                    response_problem.get("difficulty", "")
+                ).db_repr,
+                description=await self._parse_problem_desc(
+                    response_problem.get("content", "")
+                ),
+            )
+            if debug:
+                print(problem)
+            problem_tags: List[dict] = response_problem.get("topicTags", [])
+            tags: Set[TopicTags] = set()
+            for tag in problem_tags:
+                tag_obj = TopicTags(tag_name=tag.get("name", ""))
+                tags.add(tag_obj)
+            return {"problem": problem, "tags": tags}
+        except ValueError:
+            raise Exception("Invalid difficulty value")
 
     async def parse_single_problem_response(
         self, response_json: dict
@@ -117,15 +154,17 @@ class LeetCodeAPI:
         self, response: aiohttp.ClientResponse, error_message: str
     ) -> dict:
         if response.status == 200:
-            return await response.json()
+            return await response.json(content_type=None)
         else:
-            raise Exception(f"{error_message}: {response.status}")
+            raise FetchError(f"{error_message}: {response.status}")
 
     async def fetch_all_problems(
         self,
     ) -> Dict[int, Dict[str, Problem | Set[TopicTags]]]:
         async with aiohttp.ClientSession() as session:
-            async with session.get(url=self._github_url) as response:
+            async with session.get(
+                headers=self._github_headers, url=self._github_url
+            ) as response:
                 validated_response_json = await self._vaildate_response(
                     response, "Failed to fetch all problems"
                 )
@@ -155,7 +194,7 @@ class LeetCodeAPI:
                 validated_response_json = await self._vaildate_response(
                     response, "Failed to fetch daily problem"
                 )
-                return await self.parse_single_problem_response(validated_response_json)
+                return await self.parse_daily_problem_response(validated_response_json)
 
     async def search_problem(self, qry: str):
         pass
