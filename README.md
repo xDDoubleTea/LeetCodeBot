@@ -1,24 +1,29 @@
-# Discord bot template
+# LeetCode Discord Bot
 
 ## Features
 
-- Using `uv` as the python virtual environment manager, written in `rust`!
-- Using `discord.py` as the discord bot framework
-- Using `sqlalchemy` for ORM database
+- Discuss LeetCode problems with friends in your Discord server.
+- Get problem details, solutions, and hints directly in chat.
+- Track your LeetCode progress and share achievements.
+- Supports daily challenges.
 
-## Setup
+## Roadmap
 
-```bash
-git clone https://github.com/xDDoubleTea/Dc-py-bot-tmpl
-cd Dc-py-bot-tmpl
-uv sync
+- [x] Get problem details by ID and create a thread in discord
+- [x] Get daily challenge problem and create a thread in discord
+- [ ] Get problem details by title slug and create a thread in discord
+- [ ] Chinese support
+- [ ] Get user statistics
+- [ ] Per guild leaderboards
+- [ ] Documentation
+- [ ] Probably submit directly from discord?
+- [ ] Migrate to postgresql probably
 
-# Unix like
-source .venv/bin/activate
-# If you are on windows:
-source .\.venv\bin\activate.bat
+## Tech Stack
 
-# Remember to copy the .env.example to .env and fill in your bot token and the database url
+- python
+- discord.py
+- sqlalchemy
+- sqlite
 
-uv run main.py
-```
+- [noworneverev/leetcode-api: LeetCode API - LeetCode questions sorted by likes - Daily updated LeetCode database](https://github.com/noworneverev/leetcode-api/tree/main)
