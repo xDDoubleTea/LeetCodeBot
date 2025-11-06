@@ -55,11 +55,9 @@ class LeetCodeProblemManager:
             db_problems = {p.problem_id: p.id for p in db.query(Problem).all()}
             db_tags = {t.tag_name: t.id for t in db.query(TopicTags).all()}
             associations = []
-            print(db_problems)
             for data in all_api_problems_data.values():
                 assert isinstance(data["problem"], Problem)
                 problem_db_id = db_problems[int(data["problem"].problem_id)]
-                print(problem_db_id)
                 if not problem_db_id:
                     raise Exception(
                         f"Problem ID {data['problem'].problem_id} not found in DB."
