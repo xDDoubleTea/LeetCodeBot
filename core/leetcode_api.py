@@ -151,7 +151,7 @@ class LeetCodeAPI:
                 raise Exception("Invalid difficulty value")
         return result
 
-    async def _vaildate_response(
+    async def _validate_response(
         self, response: aiohttp.ClientResponse, error_message: str
     ) -> dict:
         if response.status == 200:
@@ -166,7 +166,7 @@ class LeetCodeAPI:
             async with session.get(
                 headers=self._github_headers, url=self._github_url
             ) as response:
-                validated_response_json = await self._vaildate_response(
+                validated_response_json = await self._validate_response(
                     response, "Failed to fetch all problems"
                 )
                 return await self.parse_all_problem_response(validated_response_json)
@@ -176,7 +176,7 @@ class LeetCodeAPI:
     ) -> Dict[Literal["problem", "tags"], Problem | Set[TopicTags]]:
         async with aiohttp.ClientSession() as session:
             async with session.get(url=f"{self._base_url}/problem/{id}") as response:
-                validated_response_json = await self._vaildate_response(
+                validated_response_json = await self._validate_response(
                     response, f"Failed to fetch problem with ID {id}"
                 )
                 return await self.parse_single_problem_response(validated_response_json)
@@ -186,7 +186,7 @@ class LeetCodeAPI:
     ) -> Dict[Literal["problem", "tags"], Problem | Set[TopicTags]]:
         async with aiohttp.ClientSession() as session:
             async with session.get(url=f"{self._base_url}/problem/{slug}") as response:
-                validated_response_json = await self._vaildate_response(
+                validated_response_json = await self._validate_response(
                     response, f"Failed to fetch problem with slug {slug}"
                 )
                 return await self.parse_single_problem_response(validated_response_json)
@@ -196,7 +196,7 @@ class LeetCodeAPI:
     ) -> Dict[Literal["problem", "tags"], Problem | Set[TopicTags]]:
         async with aiohttp.ClientSession() as session:
             async with session.get(url=f"{self._base_url}/daily") as response:
-                validated_response_json = await self._vaildate_response(
+                validated_response_json = await self._validate_response(
                     response, "Failed to fetch daily problem"
                 )
                 return await self.parse_daily_problem_response(validated_response_json)
@@ -209,7 +209,7 @@ class LeetCodeAPI:
             async with session.get(
                 url=f"{self._base_url}/user/{username}/submissions"
             ) as response:
-                return await self._vaildate_response(
+                return await self._validate_response(
                     response,
                     f"Failed to fetch user submissions with username {username}",
                 )
