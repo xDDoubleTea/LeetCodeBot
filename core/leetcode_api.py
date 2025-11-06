@@ -30,10 +30,9 @@ class LeetCodeAPI:
                 else:
                     return "LeetCode API is down."
 
-    async def _parse_problem_desc(self, content: str) -> str:
+    def _parse_problem_desc(self, content: str) -> str:
         """
         Parses the problem description from the LeetCode API response.
-        Very Expensive!
         """
         if not content:
             return "No description available."
@@ -70,7 +69,7 @@ class LeetCodeAPI:
                 difficulty=ProblemDifficulity.from_str_repr(
                     response_problem.get("difficulty", "")
                 ).db_repr,
-                description=await self._parse_problem_desc(
+                description=self._parse_problem_desc(
                     response_problem.get("content", "")
                 ),
             )
@@ -100,9 +99,7 @@ class LeetCodeAPI:
                 difficulty=ProblemDifficulity.from_str_repr(
                     response_json.get("difficulty", "")
                 ).db_repr,
-                description=await self._parse_problem_desc(
-                    response_json.get("content", "")
-                ),
+                description=self._parse_problem_desc(response_json.get("content", "")),
             )
             problem_tags: List[dict] = response_json.get("topicTags", [])
             tags: Set[TopicTags] = set()
@@ -118,7 +115,7 @@ class LeetCodeAPI:
     ) -> Dict[int, Dict[Literal["problem", "tags"], Problem | Set[TopicTags]]]:
         """
         Parses the problem response from the LeetCode API and returns a mapping of problem IDs to a dictionary.
-        The dictionary contains the Problem object and its set of TopicTags.
+        The dictionary contains the Problem object and its set of TopicTags, with key being the problem_id.
         Very Expensive!
         """
         result: Dict[
@@ -138,7 +135,7 @@ class LeetCodeAPI:
                     difficulty=ProblemDifficulity.from_str_repr(
                         problem_data_question.get("difficulty", "")
                     ).db_repr,
-                    description=await self._parse_problem_desc(
+                    description=self._parse_problem_desc(
                         problem_data_question.get("content", "")
                     ),
                 )
