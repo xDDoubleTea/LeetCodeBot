@@ -21,13 +21,22 @@ class ProblemThreadsManager:
 
     async def init_cache(self):
         with self.database_manager as db:
+            if debug:
+                print("Initializing ProblemThreadsManager Cache...")
             stmt = select(ProblemThreads)
             result = db.execute(stmt).scalars().all()
+            if debug:
+                print(f"Loaded {len(result)} problem threads from the database.")
+                print(result)
             for problem_thread in result:
                 self.problem_threads[problem_thread.thread_id] = problem_thread
-
+            if debug:
+                print("Loading GuildForumChannels...")
             stmt = select(GuildForumChannel)
             result = db.execute(stmt).scalars().all()
+            if debug:
+                print(f"Loaded {len(result)} problem threads from the database.")
+                print(result)
             for forum_channel in result:
                 self.forum_channels[forum_channel.guild_id] = forum_channel
 
