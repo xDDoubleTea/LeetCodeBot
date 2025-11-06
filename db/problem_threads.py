@@ -23,3 +23,6 @@ class ProblemThreads(Base):
             "forum_channel_db_id": self.forum_channel_db_id,
             "thread_id": self.thread_id,
         }
+
+    def __repr__(self) -> str:
+        return f"ProblemThreads(id={self.id}, problem_db_id={self.problem_db_id}, forum_channel_db_id={self.forum_channel_db_id}, thread_id={self.thread_id})"

@@ -16,6 +16,9 @@ class GuildForumChannel(Base):
             "guild_id": self.guild_id,
         }
 
+    def __repr__(self) -> str:
+        return f"GuildForumChannel(id={self.id}, channel_id={self.channel_id}, guild_id={self.guild_id})"
+
 
 class GuildForumChannelTags(Base):
     __tablename__ = "guild_forum_channel_tags"
@@ -31,3 +34,6 @@ class GuildForumChannelTags(Base):
             "forum_channel_id": self.forum_channel_id,
             "tag_name": self.tag_name,
         }
+
+    def __repr__(self) -> str:
+        return f"GuildForumChannelTags(id={self.id}, forum_channel_id={self.forum_channel_id}, tag_name={self.tag_name})"
