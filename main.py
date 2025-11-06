@@ -1,4 +1,5 @@
 import discord
+import signal
 from discord.ext import commands
 from config.constants import command_prefix, MY_GUILD
 from config.secrets import bot_token, DATABASE_URL
@@ -53,14 +54,31 @@ class LeetCodeBot(commands.Bot):
 
 async def main():
     bot = LeetCodeBot()
+
+    async def shutdown(sig: signal.Signals, loop: asyncio.AbstractEventLoop):
+        for task in asyncio.all_tasks(loop):
+            task.cancel()
+
+        await bot.close()
+
+        loop.stop()
+
+    loop = asyncio.get_event_loop()
+    for sig in (signal.SIGINT, signal.SIGTERM):
+        loop.add_signal_handler(
+            sig, lambda s=sig: asyncio.create_task(shutdown(s, loop))
+        )
+
     Base.metadata.create_all(bind=bot.engine)
     try:
         await bot.start(token=bot_token)
-    except KeyboardInterrupt:
-        await bot.close()
+    except asyncio.CancelledError:
+        print("Shutting down gracefully...")
     except Exception as e:
-        print(f"An error occurred: {e}")
-        exit(1)
+        print(f"An unhandled error occurred: {e}")
+    finally:
+        if not bot.is_closed():
+            await bot.close()
 
 
 @tasks.loop(hours=24 * 7, name="weekly_cache_refresh")

@@ -39,7 +39,7 @@ class Problem(Base):
         }
 
     def __repr__(self) -> str:
-        return f"Problem(id={self.id}, title={self.title}, problem_id={self.problem_id}, url={self.url}, difficulty={self.difficulty}, description={self.description})"
+        return f"Problem(id={self.id}, title={self.title}, problem_id={self.problem_id}, url={self.url}, difficulty={self.difficulty}, description={self.description}, tags={self.tags})"
 
 
 class TopicTags(Base):
