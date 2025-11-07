@@ -53,7 +53,7 @@ class LeetCode(commands.Cog):
         self, problem: Problem, problem_tags: Set[TopicTags]
     ) -> Embed:
         embed = Embed(
-            title=f"{problem.problem_id}. {problem.title}",
+            title=f"{problem.problem_frontend_id}. {problem.title}",
             url=problem.url,
             description=problem.description,
         )
@@ -79,7 +79,7 @@ class LeetCode(commands.Cog):
         problem_tags: Set[TopicTags],
         is_daily: bool = False,
     ) -> ThreadWithMessage:
-        thread_name = f"{problem.problem_id}. {problem.title}"
+        thread_name = f"{problem.problem_frontend_id}. {problem.title}"
         thread_content = f"{problem.url}\n"
         thread_embed = await self.get_problem_desc_embed(problem, problem_tags)
         available_tags = channel.available_tags
@@ -107,7 +107,7 @@ class LeetCode(commands.Cog):
             applied_tags=[tag for tag in available_tags if tag.name in tags_to_assign],
         )
         await self.problem_threads_manager.create_thread_in_db(
-            problem_id=problem.problem_id,
+            problem_frontend_id=problem.problem_frontend_id,
             guild_id=channel.guild.id,
             thread_id=thread.thread.id,
         )
@@ -165,6 +165,9 @@ class LeetCode(commands.Cog):
                 await interaction.followup.send(
                     "The thread for today's problem was supposed to exist but cannot be found. It might have been deleted."
                 )
+                await self.problem_threads_manager.delete_thread_from_db(
+                    thread_id=forum_thread.thread_id
+                )
                 return
             await interaction.followup.send(
                 f"Thread for today's problem already exists: {thread_channel.mention}"
@@ -221,9 +224,22 @@ class LeetCode(commands.Cog):
                     guild=interaction.guild, channel_id=forum_thread.thread_id
                 )
                 if not thread_channel:
-                    await interaction.followup.send(
-                        "The thread for this problem was supposed to exist but cannot be found. It might have been deleted."
+                    msg = await interaction.followup.send(
+                        "The thread for this problem was supposed to exist but cannot be found. It might have been deleted. I will create a new one now."
                     )
+                    await self.problem_threads_manager.delete_thread_from_db(
+                        thread_id=forum_thread.thread_id
+                    )
+                    assert isinstance(problem["tags"], Set)
+                    thread = await self._create_thread(
+                        channel=forum_channel,
+                        problem=problem_obj,
+                        problem_tags=problem["tags"],
+                    )
+                    if msg:
+                        msg.edit(
+                            "Created new thread for problem {id} in {thread.thread.mention}."
+                        )
                     return
                 await interaction.followup.send(
                     f"Thread for problem {id} already exists: {thread_channel.mention}"

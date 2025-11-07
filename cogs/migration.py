@@ -49,10 +49,10 @@ class Migration(commands.Cog):
                 match = problem_name_regex.match(thread.name)
                 if not match:
                     continue
-                problem_id = int(match.group(1))
+                problem_frontend_id = int(match.group(1))
                 problem_thread_instance = (
                     await self.bot.problem_threads_manager.create_thread_instance(
-                        problem_id, interaction.guild.id, thread.id
+                        problem_frontend_id, interaction.guild.id, thread.id
                     )
                 )
                 if problem_thread_instance:
