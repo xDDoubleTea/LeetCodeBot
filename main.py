@@ -12,7 +12,6 @@ from db.database_manager import DatabaseManager
 from sqlalchemy import create_engine
 import os
 from config.secrets import debug
-from discord.ext import tasks
 
 
 class LeetCodeBot(commands.Bot):

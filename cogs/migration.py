@@ -40,10 +40,15 @@ class Migration(commands.Cog):
                 return
 
             problem_threads: Dict[int, ProblemThreads] = dict()
-            all_leetcode_threads = filter(
-                lambda thd: leetcode_tag in thd.applied_tags, channel.threads
-            )
+            all_leetcode_threads = []
             # Example thread name: "1. Two Sum"
+            all_leetcode_threads += list(
+                filter(lambda thd: leetcode_tag in thd.applied_tags, channel.threads)
+            )
+            async for thd in channel.archived_threads(limit=None):
+                if leetcode_tag in thd.applied_tags:
+                    all_leetcode_threads.append(thd)
+
             problem_name_regex = re.compile(r"^(\d+)\.\s")
             for thread in all_leetcode_threads:
                 match = problem_name_regex.match(thread.name)
