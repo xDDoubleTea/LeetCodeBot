@@ -315,6 +315,20 @@ class LeetCode(commands.Cog):
             )
             return
 
+    @set_forum_channel.error
+    async def on_set_forum_error(
+        self, interaction: Interaction, error: app_commands.AppCommandError
+    ) -> None:
+        if isinstance(error, app_commands.errors.MissingPermissions):
+            await interaction.response.send_message(
+                "You do not have the required permissions to use this command.",
+                ephemeral=True,
+            )
+        else:
+            await interaction.response.send_message(
+                f"An error occurred: {error}", ephemeral=True
+            )
+
 
 async def setup(bot) -> None:
     await bot.add_cog(LeetCode(bot))

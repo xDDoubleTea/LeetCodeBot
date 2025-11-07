@@ -1,5 +1,6 @@
 from discord import TextChannel
 from discord.ext import commands
+import discord
 from discord.ext.commands import Context, Cog, ExtensionNotFound
 from discord.ext.commands.core import ExtensionFailed
 from discord.ext.commands.errors import (
@@ -71,6 +72,14 @@ class admin(Cog):
         return await ctx.send(
             "\n".join(s.split("cogs.")[1] for s in self.bot.extensions)
         )
+
+    @commands.command(name="sync_app_commands", hidden=True)
+    @is_me_command()
+    async def sync_app_commands(self, ctx: Context):
+        assert ctx.guild is not None
+        self.bot.tree.copy_global_to(guild=discord.Object(id=ctx.guild.id))
+        synced = await self.bot.tree.sync(guild=ctx.guild)
+        await ctx.send(f"Synced {len(synced)} app commands globally.")
 
     @commands.command(name="purge_msg", hidden=True, aliases=["purge"])
     @commands.has_permissions(administrator=True)
