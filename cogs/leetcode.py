@@ -157,7 +157,7 @@ class LeetCode(commands.Cog):
             )
             return
         forum_thread = await self.problem_threads_manager.get_thread_by_problem_id(
-            problem_obj.problem_id, interaction.guild.id
+            problem_obj.problem_frontend_id, interaction.guild.id
         )
         if not forum_thread:
             thread = await self._create_thread(
