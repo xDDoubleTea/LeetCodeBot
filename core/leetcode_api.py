@@ -65,6 +65,7 @@ class LeetCodeAPI:
             problem = Problem(
                 title=response_problem.get("title", ""),
                 problem_id=response_problem.get("questionId", 0),
+                problem_frontend_id=response_problem.get("questionFrontendId", 0),
                 url=response_url,
                 difficulty=ProblemDifficulity.from_str_repr(
                     response_problem.get("difficulty", "")
@@ -94,7 +95,8 @@ class LeetCodeAPI:
         try:
             problem = Problem(
                 title=response_json.get("title", ""),
-                problem_id=response_json.get("questionId", 0),
+                problem_id=int(response_json.get("questionId", 0)),
+                problem_frontend_id=int(response_json.get("questionFrontendId", 0)),
                 url=response_json.get("url", ""),
                 difficulty=ProblemDifficulity.from_str_repr(
                     response_json.get("difficulty", "")
@@ -130,7 +132,10 @@ class LeetCodeAPI:
             try:
                 problem = Problem(
                     title=problem_data_question.get("title", ""),
-                    problem_id=problem_data_question.get("questionId", 0),
+                    problem_id=int(problem_data_question.get("questionId", 0)),
+                    problem_frontend_id=int(
+                        problem_data_question.get("questionFrontendId", 0)
+                    ),
                     url=problem_data_question.get("url", ""),
                     difficulty=ProblemDifficulity.from_str_repr(
                         problem_data_question.get("difficulty", "")
@@ -145,7 +150,10 @@ class LeetCodeAPI:
                     tag_obj = TopicTags(tag_name=tag.get("name", ""))
                     tags.add(tag_obj)
                     cur_tags.add(tag_obj)
-                result[problem.problem_id] = {"problem": problem, "tags": cur_tags}
+                result[problem.problem_frontend_id] = {
+                    "problem": problem,
+                    "tags": cur_tags,
+                }
 
             except ValueError:
                 raise Exception("Invalid difficulty value")

@@ -17,6 +17,7 @@ class Problem(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     title: Mapped[str] = mapped_column(nullable=False)
     problem_id: Mapped[int] = mapped_column(nullable=False, unique=True)
+    problem_frontend_id: Mapped[int] = mapped_column(nullable=False, unique=True)
     url: Mapped[str] = mapped_column(nullable=False)
     difficulty: Mapped[int] = mapped_column(nullable=False)
     description: Mapped[str] = mapped_column(nullable=True)
@@ -32,6 +33,7 @@ class Problem(Base):
             "id": self.id,
             "title": self.title,
             "problem_id": self.problem_id,
+            "problem_frontend_id": self.problem_frontend_id,
             "url": self.url,
             "difficulty": self.difficulty,
             "description": self.description,
@@ -39,7 +41,7 @@ class Problem(Base):
         }
 
     def __repr__(self) -> str:
-        return f"Problem(id={self.id}, title={self.title}, problem_id={self.problem_id}, url={self.url}, difficulty={self.difficulty}, description={self.description}, tags={self.tags})"
+        return f"Problem(id={self.id}, title={self.title}, problem_id={self.problem_id}, problem_frontend_id={self.problem_frontend_id}, url={self.url}, difficulty={self.difficulty})"
 
 
 class TopicTags(Base):

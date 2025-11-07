@@ -86,10 +86,12 @@ class ProblemThreadsManager:
         return None
 
     async def get_thread_by_problem_id(
-        self, problem_id: int, guild_id: int
+        self, problem_frontend_id: int, guild_id: int
     ) -> ProblemThreads | None:
         with self.database_manager as db:
-            problem = await self.leetcode_problem_manager.get_problem(problem_id)
+            problem = await self.leetcode_problem_manager.get_problem(
+                problem_frontend_id
+            )
             if not problem:
                 return None
             problem = problem["problem"]
@@ -114,14 +116,16 @@ class ProblemThreadsManager:
         return None
 
     async def create_thread_in_db(
-        self, problem_id: int, guild_id: int, thread_id: int
+        self, problem_frontend_id: int, guild_id: int, thread_id: int
     ) -> None:
         with self.database_manager as db:
             forum_channel = await self.get_forum_channel(guild_id)
             if not forum_channel:
                 return None
 
-            problem = await self.leetcode_problem_manager.get_problem(problem_id)
+            problem = await self.leetcode_problem_manager.get_problem(
+                problem_frontend_id
+            )
             if not problem:
                 return None
             problem = problem["problem"]
@@ -138,12 +142,12 @@ class ProblemThreadsManager:
             self.problem_threads[thread_id] = problem_thread
 
     async def create_thread_instance(
-        self, problem_id: int, guild_id: int, thread_id: int
+        self, problem_frontend_id: int, guild_id: int, thread_id: int
     ) -> ProblemThreads | None:
         forum_channel = await self.get_forum_channel(guild_id)
         if not forum_channel:
             raise ForumChannelNotFound(f"Forum channel for guild {guild_id} not found.")
-        problem = await self.leetcode_problem_manager.get_problem(problem_id)
+        problem = await self.leetcode_problem_manager.get_problem(problem_frontend_id)
         if not problem:
             return None
         problem = problem["problem"]
@@ -173,3 +177,13 @@ class ProblemThreadsManager:
             db.execute(upsert_stmt, [pt.to_dict() for pt in problem_threads.values()])
 
         await self.init_cache()
+
+    async def delete_thread_from_db(self, thread_id: int) -> None:
+        with self.database_manager as db:
+            stmt = select(ProblemThreads).where(ProblemThreads.thread_id == thread_id)
+            problem_thread = db.execute(stmt).scalars().first()
+            if problem_thread:
+                db.delete(problem_thread)
+                db.commit()
+                if thread_id in self.problem_threads:
+                    del self.problem_threads[thread_id]

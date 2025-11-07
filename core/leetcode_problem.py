@@ -31,6 +31,7 @@ class LeetCodeProblemManager:
                     "url": insert_stmt.excluded.url,
                     "difficulty": insert_stmt.excluded.difficulty,
                     "description": insert_stmt.excluded.description,
+                    "problem_frontend_id": insert_stmt.excluded.problem_frontend_id,
                 },
             )
             db.execute(insert_stmt, mappings)
@@ -52,15 +53,15 @@ class LeetCodeProblemManager:
     ) -> None:
         """Correctly creates associations based on the API data."""
         with self.database_mananger as db:
-            db_problems = {p.problem_id: p.id for p in db.query(Problem).all()}
+            db_problems = {p.problem_frontend_id: p.id for p in db.query(Problem).all()}
             db_tags = {t.tag_name: t.id for t in db.query(TopicTags).all()}
             associations = []
             for data in all_api_problems_data.values():
                 assert isinstance(data["problem"], Problem)
-                problem_db_id = db_problems[int(data["problem"].problem_id)]
+                problem_db_id = db_problems[int(data["problem"].problem_frontend_id)]
                 if not problem_db_id:
                     raise Exception(
-                        f"Problem ID {data['problem'].problem_id} not found in DB."
+                        f"Problem ID {data['problem'].problem_frontend_id} not found in DB."
                     )
                 assert isinstance(data["tags"], set)
                 for tag in data["tags"]:
@@ -92,7 +93,9 @@ class LeetCodeProblemManager:
         try:
             problems = await self.get_problems_from_db()
             print(f"Loaded {len(problems)} problems from the database into cache.")
-            self.problem_cache = {problem.problem_id: problem for problem in problems}
+            self.problem_cache = {
+                problem.problem_frontend_id: problem for problem in problems
+            }
         except Exception as e:
             raise Exception(f"Failed to initialize cache: {e}")
 
@@ -104,12 +107,12 @@ class LeetCodeProblemManager:
         try:
             api_problems = await self.leetcode_api.fetch_all_problems()
             all_problems: Dict[int, Problem] = {
-                problem_id: problem["problem"]
-                for problem_id, problem in api_problems.items()
+                problem_frontend_id: problem["problem"]
+                for problem_frontend_id, problem in api_problems.items()
             }
             all_problem_tags: Dict[int, Set[TopicTags]] = {
-                problem_id: problem["tags"]
-                for problem_id, problem in api_problems.items()
+                problem_frontend_id: problem["tags"]
+                for problem_frontend_id, problem in api_problems.items()
             }
             await self._bulk_upsert_problems(all_problems)
             all_topic_tags: Set[TopicTags] = set()
@@ -134,38 +137,44 @@ class LeetCodeProblemManager:
             all_topics = db.execute(stmt).scalars().all()
             return {topic.id: topic for topic in all_topics}
 
-    async def get_problem_from_db(self, problem_id: int) -> Problem | None:
+    async def get_problem_from_db(self, problem_frontend_id: int) -> Problem | None:
         with self.database_mananger as db:
             stmt = (
                 select(Problem)
-                .where(Problem.problem_id == problem_id)
+                .where(Problem.problem_frontend_id == problem_frontend_id)
                 .options(selectinload(Problem.tags))
             )
             problem = db.execute(stmt).scalars().first()
             return problem
 
     async def get_problem(
-        self, problem_id: int
+        self, problem_frontend_id: int
     ) -> Dict[Literal["problem", "tags"], Problem | Set[TopicTags]] | None:
         """
         Retrieves a problem by its ID from the cache or fetches it from LeetCode if not present.
         """
-        if problem_in_cache := self.problem_cache.get(problem_id, None):
+        if problem_in_cache := self.problem_cache.get(problem_frontend_id, None):
             return {"problem": problem_in_cache, "tags": set(problem_in_cache.tags)}
         try:
-            problem = await self.get_problem_from_db(problem_id=problem_id)
+            problem = await self.get_problem_from_db(
+                problem_frontend_id=problem_frontend_id
+            )
             if problem:
-                self.problem_cache[problem_id] = problem
+                self.problem_cache[problem_frontend_id] = problem
                 return {"problem": problem, "tags": set(problem.tags)}
 
-            problem_data = await self.leetcode_api.fetch_problem_by_id(problem_id)
+            problem_data = await self.leetcode_api.fetch_problem_by_id(
+                problem_frontend_id
+            )
             if not problem_data:
-                raise ProblemNotFound(f"Problem with ID {problem_id} not found.")
+                raise ProblemNotFound(
+                    f"Problem with ID {problem_frontend_id} not found."
+                )
             problem = problem_data["problem"]
             tags = problem_data["tags"]
             assert isinstance(tags, set) and isinstance(problem, Problem)
             problem = await self.add_problem_to_db(problem, tags)
-            self.problem_cache[problem_id] = problem
+            self.problem_cache[problem_frontend_id] = problem
             return {"problem": problem, "tags": set(problem.tags)}
         except Exception as e:
             raise Exception(e)
@@ -183,18 +192,20 @@ class LeetCodeProblemManager:
             problem = problem_data["problem"]
             tags = problem_data["tags"]
             assert isinstance(tags, set) and isinstance(problem, Problem)
-            if problem.problem_id in self.problem_cache.keys():
+            if problem.problem_frontend_id in self.problem_cache.keys():
                 return {
-                    "problem": self.problem_cache[problem.problem_id],
-                    "tags": set(self.problem_cache[problem.problem_id].tags),
+                    "problem": self.problem_cache[problem.problem_frontend_id],
+                    "tags": set(self.problem_cache[problem.problem_frontend_id].tags),
                 }
-            if db_problem := await self.get_problem_from_db(problem.problem_id):
-                self.problem_cache[problem.problem_id] = db_problem
+            if db_problem := await self.get_problem_from_db(
+                problem.problem_frontend_id
+            ):
+                self.problem_cache[problem.problem_frontend_id] = db_problem
                 return {"problem": db_problem, "tags": set(db_problem.tags)}
 
             new_problem = await self.add_problem_to_db(problem, tags)
 
-            self.problem_cache[problem.problem_id] = new_problem
+            self.problem_cache[problem.problem_frontend_id] = new_problem
             return {
                 "problem": new_problem,
                 "tags": set(new_problem.tags),
@@ -230,3 +241,16 @@ class LeetCodeProblemManager:
             db.commit()
             db.refresh(db_problem, attribute_names=["tags"])
             return db_problem
+
+    async def delete_problem_from_db(self, problem_frontend_id: int) -> None:
+        with self.database_mananger as db:
+            db_problem = (
+                db.query(Problem)
+                .filter_by(problem_frontend_id=problem_frontend_id)
+                .first()
+            )
+            if db_problem:
+                db.delete(db_problem)
+                db.commit()
+                if problem_frontend_id in self.problem_cache:
+                    del self.problem_cache[problem_frontend_id]
