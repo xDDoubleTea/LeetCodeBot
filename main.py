@@ -35,6 +35,7 @@ class LeetCodeBot(commands.Bot):
             if cog.endswith(".py"):
                 await self.load_extension(f"cogs.{cog[:-3]}")
         await self.leetcode_problem_manger.init_cache()
+        await self.problem_threads_manager.init_cache()
 
     async def close(self) -> None:
         await super().close()
@@ -43,8 +44,6 @@ class LeetCodeBot(commands.Bot):
     async def on_ready(self):
         self.tree.copy_global_to(guild=MY_GUILD)
         await self.tree.sync(guild=MY_GUILD)
-        if not debug:
-            await weekly_cache_refresh.start(self)
         print(f"Logged in as {self.user}!")
         await self.change_presence(
             status=discord.Status.online,
@@ -83,13 +82,6 @@ async def main():
     finally:
         if not bot.is_closed():
             await bot.close()
-
-
-@tasks.loop(hours=24 * 7, name="weekly_cache_refresh")
-async def weekly_cache_refresh(bot: LeetCodeBot) -> None:
-    print("Refreshing LeetCode problems cache...")
-    await bot.leetcode_problem_manger.refresh_cache()
-    print("LeetCode problems cache refreshed.")
 
 
 if __name__ == "__main__":

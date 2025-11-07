@@ -13,6 +13,7 @@ from config.secrets import debug
 from db.problem import Problem, TopicTags
 from main import LeetCodeBot
 from models.leetcode import ProblemDifficulity
+from discord.ext import tasks
 
 
 class LeetCode(commands.Cog):
@@ -22,6 +23,17 @@ class LeetCode(commands.Cog):
         self.leetcode_problem_manager = bot.leetcode_problem_manger
         self.leetcode_api = bot.leetcode_api
         self.problem_threads_manager = bot.problem_threads_manager
+
+    @tasks.loop(hours=24 * 7, name="weekly_cache_refresh")
+    async def weekly_cache_refresh(self) -> None:
+        print("Refreshing LeetCode problems cache...")
+        await self.leetcode_problem_manager.refresh_cache()
+        print("LeetCode problems cache refreshed.")
+
+    @commands.Cog.listener()
+    async def on_ready(self) -> None:
+        if not debug and not self.weekly_cache_refresh.is_running():
+            self.weekly_cache_refresh.start()
 
     @staticmethod
     def get_difficulty_str_repr(difficulty_db_repr: int) -> str:
