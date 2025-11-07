@@ -1,4 +1,4 @@
-from typing import Optional, Set
+from typing import Set
 import discord
 from discord import Interaction, app_commands
 from discord.channel import ForumChannel, ThreadWithMessage
@@ -296,16 +296,9 @@ class LeetCode(commands.Cog):
     @app_commands.checks.has_permissions(administrator=True)
     @app_commands.guild_only()
     async def set_forum_channel(
-        self, interaction: Interaction, channel: Optional[ForumChannel]
+        self, interaction: Interaction, channel: ForumChannel
     ) -> None:
         await interaction.response.defer(thinking=True)
-        if not channel:
-            if not isinstance(interaction.channel, ForumChannel):
-                await interaction.followup.send(
-                    "Please specify a valid forum channel or run this command in a forum channel."
-                )
-                return
-            channel = interaction.channel
         try:
             guild_id = interaction.guild_id
             channel_id = channel.id

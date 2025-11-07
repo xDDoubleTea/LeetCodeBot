@@ -2,10 +2,12 @@ from discord.ext import commands
 import discord
 from discord import app_commands
 from utils.checks import is_me_app_command
+from main import LeetCodeBot
+from db.problem import Problem
 
 
 class Debug(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: LeetCodeBot) -> None:
         self.bot = bot
         self.database_manager = bot.database_manager
 
@@ -18,12 +20,7 @@ class Debug(commands.Cog):
         await interaction.response.send_message(
             "Printing problems cache to console...", ephemeral=True
         )
-        for problem_id, data in self.bot.leetcode_problem_manger.problem_cache.items():
-            problem = data["problem"]
-            tags = data["tags"]
-            print(
-                f"Problem ID: {problem.problem_id}, Title: {problem.title}, Tags: {[tag.tag_name for tag in tags]}"
-            )
+        print(self.bot.leetcode_problem_manger.problem_cache)
 
     @app_commands.command(
         name="fetch_problem", description="Fetch a problem by its ID from LeetCode"
@@ -49,6 +46,7 @@ class Debug(commands.Cog):
                 return
             problem = problem_data["problem"]
             tags = problem_data["tags"]
+            assert isinstance(tags, set) and isinstance(problem, Problem)
             await interaction.followup.send(
                 f"Fetched Problem ID: {problem.problem_id}, Title: {problem.title}, Tags: {[tag.tag_name for tag in tags]}",
                 ephemeral=True,
@@ -59,5 +57,5 @@ class Debug(commands.Cog):
             )
 
 
-async def setup(bot: commands.Bot) -> None:
+async def setup(bot: LeetCodeBot) -> None:
     await bot.add_cog(Debug(bot))
