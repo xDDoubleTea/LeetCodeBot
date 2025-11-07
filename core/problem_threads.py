@@ -6,6 +6,11 @@ from db.thread_channel import GuildForumChannel
 from db.problem_threads import ProblemThreads
 from core.leetcode_problem import LeetCodeProblemManager
 from config.secrets import debug
+from sqlalchemy.dialects.sqlite import insert as sqlite_upsert
+
+
+class ForumChannelNotFound(Exception):
+    pass
 
 
 class ProblemThreadsManager:
@@ -131,3 +136,40 @@ class ProblemThreadsManager:
             db.add(problem_thread)
             db.commit()
             self.problem_threads[thread_id] = problem_thread
+
+    async def create_thread_instance(
+        self, problem_id: int, guild_id: int, thread_id: int
+    ) -> ProblemThreads | None:
+        forum_channel = await self.get_forum_channel(guild_id)
+        if not forum_channel:
+            raise ForumChannelNotFound(f"Forum channel for guild {guild_id} not found.")
+        problem = await self.leetcode_problem_manager.get_problem(problem_id)
+        if not problem:
+            return None
+        problem = problem["problem"]
+        print(problem)
+        assert isinstance(problem, Problem)
+        problem_thread = ProblemThreads(
+            thread_id=thread_id,
+            problem_db_id=problem.id,
+            forum_channel_db_id=forum_channel.id,
+        )
+        return problem_thread
+
+    async def bulk_upsert_thread_to_db(
+        self, problem_threads: Dict[int, ProblemThreads]
+    ) -> None:
+        if not problem_threads:
+            raise ValueError("No problem threads to upsert.")
+        with self.database_manager as db:
+            upsert_stmt = sqlite_upsert(ProblemThreads)
+            upsert_stmt = upsert_stmt.on_conflict_do_update(
+                index_elements=["thread_id"],
+                set_={
+                    "problem_db_id": upsert_stmt.excluded.problem_db_id,
+                    "forum_channel_db_id": upsert_stmt.excluded.forum_channel_db_id,
+                },
+            )
+            db.execute(upsert_stmt, [pt.to_dict() for pt in problem_threads.values()])
+
+        await self.init_cache()

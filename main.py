@@ -48,7 +48,11 @@ class LeetCodeBot(commands.Bot):
         print(f"Logged in as {self.user}!")
         await self.change_presence(
             status=discord.Status.online,
-            activity=discord.Game("Leetcode Bot"),
+            activity=discord.Activity(
+                name="Solving LeetCode Problems!",
+                type=discord.ActivityType.watching,
+                url="https://leetcode.com",
+            ),
         )
 
 
