@@ -121,7 +121,9 @@ class ProblemThreadsManager:
         with self.database_manager as db:
             forum_channel = await self.get_forum_channel(guild_id)
             if not forum_channel:
-                return None
+                raise ForumChannelNotFound(
+                    f"Forum channel for guild {guild_id} not found."
+                )
 
             problem = await self.leetcode_problem_manager.get_problem(
                 problem_frontend_id
@@ -138,8 +140,9 @@ class ProblemThreadsManager:
                 forum_channel_db_id=forum_channel.id,
             )
             db.add(problem_thread)
-            db.commit()
-            self.problem_threads[thread_id] = problem_thread
+        problem_thread = await self.get_thread_by_thread_id(thread_id)
+        assert problem_thread is not None
+        self.problem_threads[thread_id] = problem_thread
 
     async def create_thread_instance(
         self, problem_frontend_id: int, guild_id: int, thread_id: int
