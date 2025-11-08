@@ -96,7 +96,7 @@ class LeetCode(commands.Cog):
         is_daily: bool = False,
     ) -> ThreadWithMessage:
         logger.info(
-            f"Creating thread in channel {channel.id} for problem {problem.problem_id}"
+            f"Creating thread in channel {channel.id} for problem {problem.problem_frontend_id}"
         )
         thread_name = f"{problem.problem_frontend_id}. {problem.title}"
         thread_content = f"{problem.url}\n"
@@ -206,7 +206,7 @@ class LeetCode(commands.Cog):
                     is_daily=True,
                 )
                 logger.info(
-                    f"Created new thread in channel {forum_channel.id} for today's problem {problem_obj.problem_id}"
+                    f"Created new thread in channel {forum_channel.id} for today's problem {problem_obj.problem_frontend_id}"
                 )
                 if msg:
                     msg.edit(
@@ -263,7 +263,7 @@ class LeetCode(commands.Cog):
                 )
                 return
             forum_thread = await self.problem_threads_manager.get_thread_by_problem_id(
-                problem_obj.problem_id, interaction.guild.id
+                problem_obj.problem_frontend_id, interaction.guild.id
             )
             logger.debug(f"Forum thread fetched: {forum_thread}")
 
