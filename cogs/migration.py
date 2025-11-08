@@ -5,6 +5,7 @@ import re
 from db.problem_threads import ProblemThreads
 from main import LeetCodeBot
 from typing import Dict
+from main import logger
 
 
 class Migration(commands.Cog):
@@ -18,6 +19,9 @@ class Migration(commands.Cog):
         self, interaction: discord.Interaction, channel: ForumChannel
     ) -> None:
         await interaction.response.defer(ephemeral=True)
+        logger.info(
+            f"User {interaction.user} initiated migration in guild {interaction.guild} for channel {channel.id}"
+        )
         try:
             assert isinstance(channel, ForumChannel) and interaction.guild is not None
             if (
@@ -48,7 +52,12 @@ class Migration(commands.Cog):
             async for thd in channel.archived_threads(limit=None):
                 if leetcode_tag in thd.applied_tags:
                     all_leetcode_threads.append(thd)
-
+            logger.info(
+                f"Found {len(all_leetcode_threads)} LeetCode threads in channel {channel.id} for migration."
+            )
+            logger.debug(
+                f"LeetCode Threads: {[thread.name for thread in all_leetcode_threads]}"
+            )
             problem_name_regex = re.compile(r"^(\d+)\.\s")
             for thread in all_leetcode_threads:
                 match = problem_name_regex.match(thread.name)
@@ -60,6 +69,9 @@ class Migration(commands.Cog):
                         problem_frontend_id, interaction.guild.id, thread.id
                     )
                 )
+                logger.debug(
+                    f"Processed thread ID {thread.id} for problem frontend ID {problem_frontend_id}."
+                )
                 if problem_thread_instance:
                     problem_threads[thread.id] = problem_thread_instance
             await self.bot.problem_threads_manager.bulk_upsert_thread_to_db(
@@ -70,6 +82,7 @@ class Migration(commands.Cog):
             )
 
         except Exception as e:
+            logger.error(f"Error during migration: {e}", exc_info=e)
             await interaction.followup.send(
                 f"Something went wrong when migrating! Error : {e}"
             )

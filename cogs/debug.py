@@ -5,6 +5,8 @@ from utils.checks import is_me_app_command
 from main import LeetCodeBot
 from db.problem import Problem
 
+from main import logger
+
 
 class Debug(commands.Cog):
     def __init__(self, bot: LeetCodeBot) -> None:
@@ -20,6 +22,7 @@ class Debug(commands.Cog):
         await interaction.response.send_message(
             "Printing problems cache to console...", ephemeral=True
         )
+        logger.debug("Problems Cache:")
         print(self.bot.leetcode_problem_manger.problem_cache)
 
     @app_commands.command(
