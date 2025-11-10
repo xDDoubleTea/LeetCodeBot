@@ -21,11 +21,11 @@ class LeetCodeProblemManager:
     ) -> None:
         self.problem_cache: Dict[int, Problem] = dict()
         self.leetcode_api: LeetCodeAPI = leetcode_api
-        self.database_mananger: DatabaseManager = database_manager
+        self.database_manager: DatabaseManager = database_manager
         self.logger: logging.Logger = logger
 
     async def _bulk_upsert_problems(self, api_problems: Dict[int, Problem]) -> None:
-        with self.database_mananger as db:
+        with self.database_manager as db:
             self.logger.info(
                 f"Upserting {len(api_problems)} problems into the database."
             )
@@ -46,7 +46,7 @@ class LeetCodeProblemManager:
             self.logger.info("Bulk upsert of problems completed.")
 
     async def _bulk_upsert_topic_tags(self, topic_tags: Set[TopicTags]) -> None:
-        with self.database_mananger as db:
+        with self.database_manager as db:
             self.logger.info(
                 f"Upserting {len(topic_tags)} topic tags into the database."
             )
@@ -66,7 +66,7 @@ class LeetCodeProblemManager:
         ],
     ) -> None:
         """Correctly creates associations based on the API data."""
-        with self.database_mananger as db:
+        with self.database_manager as db:
             self.logger.info("Creating problem-tag associations.")
             db_problems = {p.problem_frontend_id: p.id for p in db.query(Problem).all()}
             db_tags = {t.tag_name: t.id for t in db.query(TopicTags).all()}
@@ -153,21 +153,21 @@ class LeetCodeProblemManager:
             raise Exception(e)
 
     async def get_problems_from_db(self) -> Sequence[Problem]:
-        with self.database_mananger as db:
+        with self.database_manager as db:
             self.logger.info("Fetching all problems from the database.")
             stmt = select(Problem).options(selectinload(Problem.tags))
             results = db.execute(stmt).scalars().all()
             return results
 
     async def get_all_topics_from_db(self) -> Dict[int, TopicTags]:
-        with self.database_mananger as db:
+        with self.database_manager as db:
             stmt = select(TopicTags)
             self.logger.info("Fetching all topic tags from the database.")
             all_topics = db.execute(stmt).scalars().all()
             return {topic.id: topic for topic in all_topics}
 
     async def get_problem_from_db(self, problem_frontend_id: int) -> Problem | None:
-        with self.database_mananger as db:
+        with self.database_manager as db:
             self.logger.info(
                 f"Fetching problem with frontend ID {problem_frontend_id} from the database."
             )
@@ -281,7 +281,7 @@ class LeetCodeProblemManager:
     async def add_problem_to_db(
         self, problem: Problem, tags: Set[TopicTags]
     ) -> Problem:
-        with self.database_mananger as db:
+        with self.database_manager as db:
             self.logger.info(
                 f"Adding problem with ID {problem.problem_id} to the database."
             )
@@ -319,7 +319,7 @@ class LeetCodeProblemManager:
         self.logger.info(
             f"Deleting problem with frontend ID {problem_frontend_id} from the database."
         )
-        with self.database_mananger as db:
+        with self.database_manager as db:
             db_problem = (
                 db.query(Problem)
                 .filter_by(problem_frontend_id=problem_frontend_id)
