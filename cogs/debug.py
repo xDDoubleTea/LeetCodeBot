@@ -13,9 +13,18 @@ class Debug(commands.Cog):
         self.bot = bot
         self.database_manager = bot.database_manager
 
-    @app_commands.command(
-        name="print_problems_cache", description="Print the problems cache"
+    async def cog_app_command_error(
+        self, interaction: discord.Interaction, error: app_commands.AppCommandError
+    ) -> None:
+        logger.error(f"Error in Debug Cog: {error}", exc_info=error)
+
+    debug = app_commands.Group(
+        name="debug",
+        description="Debug commands for the LeetCode Bot",
+        extras={"hidden": True},
     )
+
+    @debug.command(name="print_problems_cache", description="Print the problems cache")
     @is_me_app_command()
     async def print_problems_cache(self, interaction: discord.Interaction) -> None:
         """Prints the current problems cache to the console."""
@@ -25,8 +34,9 @@ class Debug(commands.Cog):
         logger.debug("Problems Cache:")
         print(self.bot.leetcode_problem_manger.problem_cache)
 
-    @app_commands.command(
-        name="fetch_problem", description="Fetch a problem by its ID from LeetCode"
+    @debug.command(
+        name="fetch_problem",
+        description="Fetch a problem by its ID from LeetCode",
     )
     @is_me_app_command()
     async def fetch_problem(
