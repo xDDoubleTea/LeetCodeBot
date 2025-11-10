@@ -7,6 +7,20 @@
 - Track your LeetCode progress and share achievements.
 - Supports daily challenges.
 
+## Usage
+
+| Command             | Description                                         | Admin Only |
+| ------------------- | --------------------------------------------------- | ---------- |
+| `/help`             | Gets help about the bot's commands.                 | No         |
+| `/daily`            | Gets today's LeetCode problem.                      | No         |
+| `/problem [id]`     | Gets a LeetCode problem by its ID.                  | No         |
+| `/desc [id]`        | Gets a LeetCode problem description by its ID.      | No         |
+| `/migrate`          | Migrates from the old threads.                      | No         |
+| `/set_forum_channel`  | Sets the forum channel for problems.                | Yes        |
+| `/refresh`          | Refreshes the LeetCode problems cache.              | Yes        |
+| `/ping`             | Checks the bot's latency.                           | No         |
+| `/check_leetcode_api` | Checks the LeetCode API status.                     | No         |
+
 ## Roadmap
 
 - [x] Get problem details by ID and create a thread in discord
