@@ -22,7 +22,7 @@ class DatabaseManager:
             self.session = Session()
             return self.session
         except Exception as e:
-            print(f"Database connection error: {e}")
+            self.logger.error("Database connection error", exc_info=e)
             raise
 
     def __exit__(self, exc_type, exc_val, exc_tb):

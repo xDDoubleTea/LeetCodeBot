@@ -123,8 +123,7 @@ class ProblemThreadsManager:
                 ProblemThreads.forum_channel_db_id == forum_channel.id,
             )
             problem_thread = db.execute(stmt).scalars().first()
-            if debug:
-                print(problem_thread)
+            self.logger.debug(problem_thread)
             if problem_thread:
                 return problem_thread
         return None
