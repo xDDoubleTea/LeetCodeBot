@@ -352,7 +352,9 @@ class LeetCode(commands.Cog):
             )
             return
 
-    @app_commands.command(name="refresh", description="Refresh LeetCode problems cache")
+    @app_commands.command(
+        name="refresh", description="<Admin> Refresh LeetCode problems cache"
+    )
     @app_commands.checks.has_permissions(administrator=True)
     @app_commands.guild_only()
     async def refresh_cache(self, interaction: Interaction) -> None:
@@ -384,7 +386,7 @@ class LeetCode(commands.Cog):
             return
 
     @app_commands.command(
-        name="set_forum_channel", description="Set forum channel for problems"
+        name="set_forum_channel", description="<Admin> Set forum channel for problems"
     )
     @app_commands.describe(channel="The channel to set as thread channel")
     @app_commands.checks.has_permissions(administrator=True)
