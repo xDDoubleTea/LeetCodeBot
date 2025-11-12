@@ -146,7 +146,10 @@ class LeetCodeProblemManager:
             )
             await self._bulk_upsert_topic_tags(all_topic_tags)
             await self._create_problem_tag_associations(api_problems)
-            await self.init_cache()
+            problems = await self.get_problems_from_db()
+            self.logger.info("Rebuilding problem cache...")
+            for problem in problems:
+                self.problem_cache[problem.problem_frontend_id] = problem
             self.logger.info("Problem cache refresh completed.")
         except Exception as e:
             self.logger.error("Error refreshing cache", exc_info=e)
