@@ -1,16 +1,16 @@
 [project]
-name = "dc-py-bot-tmpl"
+name = "leetcode-discord-bot"
 version = "0.1.0"
-description = "Add your description here"
+description = "A Discord bot for LeetCode problem management."
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "bs4>=0.0.2",
-    "discord-py>=2.6.4",
-    "dotenv>=0.9.9",
-    "flask>=3.1.2",
-    "flask-sqlalchemy>=3.1.1",
-    "pandoc>=2.4",
-    "prettyprint>=0.1.5",
-    "sqlalchemy>=2.0.44",
+  "bs4>=0.0.2",
+  "discord-py>=2.6.4",
+  "dotenv>=0.9.9",
+  "flask>=3.1.2",
+  "flask-sqlalchemy>=3.1.1",
+  "pandoc>=2.4",
+  "prettyprint>=0.1.5",
+  "sqlalchemy>=2.0.44",
 ]
