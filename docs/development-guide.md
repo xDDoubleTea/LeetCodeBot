@@ -47,8 +47,8 @@ You can, of course, add more configurations as needed.
 With the development environment set up, you can run the bot locally using the following command:
 
 ```bash
-bin/start.bash # If you uses bash
-bin/start.zsh # If you uses zsh
+bin/start.bash # If you use bash
+bin/start.zsh # If you use zsh
 ```
 
 Alternatively, you can run the bot directly using `uv`:
