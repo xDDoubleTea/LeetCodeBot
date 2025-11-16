@@ -1,6 +1,6 @@
 from typing import Set
 import discord
-from discord import Interaction, TextChannel, app_commands
+from discord import Interaction, app_commands, Thread
 from discord.channel import ForumChannel, ThreadWithMessage
 from discord.embeds import Embed
 from discord.ext import commands
@@ -309,7 +309,7 @@ class LeetCode(commands.Cog):
                 await interaction.followup.send(
                     f"Thread for problem {id} already exists: {thread_channel.mention}"
                 )
-                assert isinstance(thread_channel, TextChannel)
+                assert isinstance(thread_channel, Thread)
                 await thread_channel.send("Thread already exists", mention_author=True)
 
         except FetchError as e:
