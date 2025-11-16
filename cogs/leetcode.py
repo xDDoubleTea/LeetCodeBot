@@ -217,6 +217,10 @@ class LeetCode(commands.Cog):
             await interaction.followup.send(
                 f"Thread for today's problem already exists: {thread_channel.mention}"
             )
+            assert isinstance(thread_channel, Thread)
+            await thread_channel.send(
+                f"Thread already exists {interaction.user.mention}"
+            )
 
     @app_commands.command(
         name="problem",
@@ -310,7 +314,9 @@ class LeetCode(commands.Cog):
                     f"Thread for problem {id} already exists: {thread_channel.mention}"
                 )
                 assert isinstance(thread_channel, Thread)
-                await thread_channel.send("Thread already exists", mention_author=True)
+                await thread_channel.send(
+                    f"Thread already exists {interaction.user.mention}"
+                )
 
         except FetchError as e:
             logger.error("FetchError occurred", exc_info=e)
