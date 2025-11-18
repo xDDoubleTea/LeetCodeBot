@@ -92,7 +92,6 @@ async def main():
         setup_logger(log_level=logging.DEBUG)
     else:
         setup_logger(log_level=logging.INFO)
-    print(bot.logger.level)
     Base.metadata.create_all(bind=bot.engine)
     try:
         await bot.start(token=bot_token)
