@@ -6,6 +6,8 @@ from discord.embeds import Embed
 from discord.ext import commands
 from core.leetcode_api import FetchError
 from utils.discord_utils import try_get_channel
+from utils.embed_utils import create_themed_embed
+
 
 from config.constants import preview_len
 from config.secrets import debug
@@ -46,6 +48,50 @@ class LeetCode(commands.Cog):
         except Exception:
             return "Unknown"
 
+    def get_user_info_embed(self, username: str, info: dict) -> Embed:
+        embed = create_themed_embed(title=f"LeetCode User: {username}", client=self.bot)
+        embed.url = f"https://leetcode.com/u/{username}/"
+        third_party_links = ["githubUrl", "twitterUrl", "linkedinUrl"]
+        value = "\n".join(
+            map(
+                str,
+                filter(lambda t: t, [info.get(key) for key in third_party_links]),
+            )
+        )
+        submissions = info.get("submitStats")
+        assert submissions
+        ac_submission = submissions.get("acSubmissionNum")
+        if ac_submission:
+            for sub in ac_submission:
+                if sub.get("difficulty").lower() == "all":
+                    embed.add_field(
+                        name="AC Submissions",
+                        value=f"Difficulty : All\nSovled: {sub.get('count')}\nTotal submitted and AC: {sub.get('submissions')}",
+                        inline=False,
+                    )
+                    break
+
+        embed.add_field(name="Other Links", value=value, inline=False)
+        profile = info.get("profile")
+        assert profile
+        embed.set_thumbnail(url=profile.get("userAvatar"))
+        embed.add_field(name="Country", value=profile.get("countryName"), inline=True)
+        embed.description = f"User's About me: {profile.get('aboutMe')}"
+        company = profile.get("company", "")
+        job_title = profile.get("jobTitle", "")
+        school = profile.get("school", "")
+        if company:
+            value = company
+            if job_title:
+                value = company + "\nJob Title: " + job_title
+            embed.add_field(name="Company", value=value, inline=False)
+        if school:
+            embed.add_field(name="School", value=school, inline=True)
+        websites = profile.get("websites")
+        if websites:
+            embed.add_field(name="Websites", value="\n".join(websites), inline=False)
+        return embed
+
     async def get_embed_color(self, difficulty_db_repr: int) -> discord.Color:
         try:
             logger.debug(f"Getting embed color for difficulty {difficulty_db_repr}")
@@ -68,11 +114,12 @@ class LeetCode(commands.Cog):
     async def get_problem_desc_embed(
         self, problem: Problem, problem_tags: Set[TopicTags]
     ) -> Embed:
-        embed = Embed(
+        embed = create_themed_embed(
             title=f"{problem.problem_frontend_id}. {problem.title}",
-            url=problem.url,
+            client=self.bot,
             description=problem.description,
         )
+        embed.url = problem.url
         difficulty_str = self.get_difficulty_str_repr(problem.difficulty)
         embed.add_field(name="Difficulty", value=difficulty_str, inline=True)
         embed.add_field(
@@ -436,6 +483,22 @@ class LeetCode(commands.Cog):
         else:
             await interaction.response.send_message(
                 f"An error occurred: {error}", ephemeral=True
+            )
+
+    @app_commands.command(name="statistics", description="Get user statistics")
+    @app_commands.describe(username="The LeetCode username")
+    async def user_statistics(self, interaction: Interaction, username: str) -> None:
+        await interaction.response.defer(thinking=True, ephemeral=False)
+        try:
+            info = await self.leetcode_api.user_info(username=username)
+            embed = self.get_user_info_embed(username=username, info=info)
+            await interaction.followup.send(embed=embed)
+        except Exception as e:
+            logger.error(
+                "Something went wrong when fetching user statistics.", exc_info=e
+            )
+            await interaction.followup.send(
+                "Something went wrong when fetching user statistics."
             )
 
 
