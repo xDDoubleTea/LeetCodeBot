@@ -9,17 +9,18 @@
 
 ## Usage
 
-| Command             | Description                                         | Admin Only |
-| ------------------- | --------------------------------------------------- | ---------- |
-| `/help`             | Gets help about the bot's commands.                 | No         |
-| `/daily`            | Gets today's LeetCode problem.                      | No         |
-| `/problem [id]`     | Gets a LeetCode problem by its ID.                  | No         |
-| `/desc [id]`        | Gets a LeetCode problem description by its ID.      | No         |
-| `/migrate`          | Migrates from the old threads.                      | No         |
-| `/set_forum_channel`  | Sets the forum channel for problems.                | Yes        |
-| `/refresh`          | Refreshes the LeetCode problems cache.              | Yes        |
-| `/ping`             | Checks the bot's latency.                           | No         |
-| `/check_leetcode_api` | Checks the LeetCode API status.                     | No         |
+| Command                  | Description                                    | Admin Only |
+| ------------------------ | ---------------------------------------------- | ---------- |
+| `/help`                  | Gets help about the bot's commands.            | No         |
+| `/daily`                 | Gets today's LeetCode problem.                 | No         |
+| `/problem [id]`          | Gets a LeetCode problem by its ID.             | No         |
+| `/desc [id]`             | Gets a LeetCode problem description by its ID. | No         |
+| `/migrate`               | Migrates from the old threads.                 | No         |
+| `/set_forum_channel`     | Sets the forum channel for problems.           | Yes        |
+| `/refresh`               | Refreshes the LeetCode problems cache.         | Yes        |
+| `/ping`                  | Checks the bot's latency.                      | No         |
+| `/check_leetcode_api`    | Checks the LeetCode API status.                | No         |
+| `/statistics [username]` | Gets user statistics by LeetCode username.     | No         |
 
 ## Roadmap
 
@@ -27,7 +28,7 @@
 - [x] Get daily challenge problem and create a thread in discord
 - [ ] Get problem details by title slug and create a thread in discord
 - [ ] Chinese support
-- [ ] Get user statistics
+- [x] Get user statistics
 - [ ] Per guild leaderboards
 - [ ] Documentation
 - [ ] Probably submit directly from discord?

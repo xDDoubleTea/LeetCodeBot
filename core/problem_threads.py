@@ -5,7 +5,6 @@ from db.problem import Problem
 from db.thread_channel import GuildForumChannel
 from db.problem_threads import ProblemThreads
 from core.leetcode_problem import LeetCodeProblemManager
-from config.secrets import debug
 from sqlalchemy.dialects.sqlite import insert as sqlite_upsert
 import logging
 
