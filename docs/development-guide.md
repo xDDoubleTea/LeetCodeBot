@@ -9,6 +9,7 @@
   - [Running the Bot Locally](#running-the-bot-locally)
   - [Testing](#testing)
   - [VSCode Setup](#vscode-setup)
+  - [Architecture Overview](#architecture-overview)
   <!--toc:end-->
 
 <!-- omit in toc -->
