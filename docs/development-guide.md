@@ -68,3 +68,7 @@ If you would like to contribute tests, please consider using a testing framework
 Chances are you are using VSCode as your IDE. After running `uv sync`, you can open the project in VSCode and it should automatically detect the virtual environment located at `./venv`. If not, you can manually select the interpreter by pressing `Ctrl+Shift+P` and searching for `Python: Select Interpreter`, then choosing the one located at `./venv/bin/python`.
 
 > I don't use VSCode myself, so if you are using another IDE and would like to contribute setup instructions for it, please feel free to open a PR!
+
+## Architecture Overview
+
+Please refer to the [Architecture Documentation](/docs/architecture/ARCHITECTURE.md).
