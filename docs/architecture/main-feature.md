@@ -3,7 +3,10 @@
 <!--toc:start-->
 
 - [Main Feature](#main-feature)
-  - [LeetCode Commands](#leetcode-commands) - [LeetCode Problem Thread Creation](#leetcode-problem-thread-creation) - [Daily Challenge Thread Creation](#daily-challenge-thread-creation)
+  - [LeetCode Commands](#leetcode-commands)
+    - [LeetCode Problem Thread Creation](#leetcode-problem-thread-creation)
+    - [Daily Challenge Thread Creation](#daily-challenge-thread-creation)
+  - [UML charts](#uml-charts)
   <!--toc:end-->
 
 ## LeetCode Commands
@@ -126,3 +129,8 @@ Start([User invokes /daily]) --> FetchAPI[Fetch Daily Challenge from API]
     ReplyLink --> End([End])
     Confirm --> End
 ```
+
+## UML charts
+
+[UML packages chart](../../assets/packages.png)
+[UML classes chart](../../assets/classes.png)
