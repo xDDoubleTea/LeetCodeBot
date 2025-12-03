@@ -42,7 +42,7 @@ class LeetCodeBot(commands.Bot):
     async def setup_hook(self) -> None:
         self.logger.info("Loading cogs...")
         for cog in os.listdir("cogs"):
-            if cog.endswith(".py"):
+            if cog.endswith(".py") and not cog.startswith("_"):
                 await self.load_extension(f"cogs.{cog[:-3]}")
         self.logger.info("Cogs loaded.")
         self.logger.info("Initializing caches...")
