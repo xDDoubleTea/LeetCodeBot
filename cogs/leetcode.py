@@ -49,7 +49,6 @@ class LeetCode(commands.Cog):
         channel: ForumChannel,
         problem: Problem,
         problem_tags: Set[TopicTags],
-        is_daily: bool = False,
     ) -> ThreadWithMessage:
         logger.info(
             f"Creating thread in channel {channel.id} for problem {problem.problem_frontend_id}"
@@ -66,7 +65,6 @@ class LeetCode(commands.Cog):
 
         tags_to_create = {
             "LeetCode",
-            "Problem" if not is_daily else "Daily",
             "Easy",
             "Medium",
             "Hard",
@@ -76,7 +74,6 @@ class LeetCode(commands.Cog):
 
         tags_to_assign = {
             "LeetCode",
-            "Problem" if not is_daily else "Daily",
             get_difficulty_str_repr(problem.difficulty),
         }
 
@@ -137,7 +134,6 @@ class LeetCode(commands.Cog):
                 channel=forum_channel,
                 problem=problem_obj,
                 problem_tags=problem["tags"],
-                is_daily=True,
             )
             await interaction.followup.send(
                 f"Created thread for today's problem in {thread.thread.mention}."
@@ -161,7 +157,6 @@ class LeetCode(commands.Cog):
                     channel=forum_channel,
                     problem=problem_obj,
                     problem_tags=problem["tags"],
-                    is_daily=True,
                 )
                 logger.info(
                     f"Created new thread in channel {forum_channel.id} for today's problem {problem_obj.problem_frontend_id}"
