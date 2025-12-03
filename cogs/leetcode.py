@@ -1,21 +1,20 @@
 from typing import Set
-import discord
 from discord import Interaction, app_commands, Thread
 from discord.channel import ForumChannel, ThreadWithMessage
-from discord.embeds import Embed
 from discord.ext import commands
 from core.leetcode_api import FetchError
 from utils.discord_utils import try_get_channel
-from utils.embed_utils import create_themed_embed
-
+from utils.embed_presenters import (
+    get_difficulty_str_repr,
+    get_problem_desc_embed,
+    get_user_info_embed,
+)
 
 from config.constants import preview_len
 from config.secrets import debug
 
 from db.problem import Problem, TopicTags
 from main import LeetCodeBot
-from models.leetcode import ProblemDifficulity
-from discord.ext import tasks
 
 from main import logger
 
@@ -28,77 +27,14 @@ class LeetCode(commands.Cog):
         self.leetcode_api = bot.leetcode_api
         self.problem_threads_manager = bot.problem_threads_manager
 
-    @tasks.loop(hours=24 * 7, name="weekly_cache_refresh")
-    async def weekly_cache_refresh(self) -> None:
-        logger.info("Refreshing LeetCode problems cache...")
-        await self.leetcode_problem_manager.refresh_cache()
-        logger.info("LeetCode problems cache refreshed.")
-
     @commands.Cog.listener()
     async def on_ready(self) -> None:
-        if not debug and not self.weekly_cache_refresh.is_running():
+        if (
+            not debug
+            and not self.leetcode_problem_manager.weekly_cache_refresh.is_running()
+        ):
             logger.info("Starting weekly LeetCode cache refresh task...")
-            self.weekly_cache_refresh.start()
-
-    @staticmethod
-    def get_difficulty_str_repr(difficulty_db_repr: int) -> str:
-        try:
-            difficulty = ProblemDifficulity.from_db_repr(difficulty_db_repr)
-            return difficulty.str_repr
-        except Exception:
-            return "Unknown"
-
-    def get_user_info_embed(self, username: str, info: dict) -> Embed:
-        embed = create_themed_embed(title=f"LeetCode User: {username}", client=self.bot)
-        embed.url = f"https://leetcode.com/u/{username}/"
-        third_party_links = ["githubUrl", "twitterUrl", "linkedinUrl"]
-        value = "\n".join(
-            map(
-                str,
-                filter(lambda t: t, [info.get(key) for key in third_party_links]),
-            )
-        )
-        submissions = info.get("submitStats")
-        assert submissions
-        ac_submission = submissions.get("acSubmissionNum")
-        if ac_submission:
-            for sub in ac_submission:
-                if sub.get("difficulty").lower() == "all":
-                    embed.add_field(
-                        name="AC Submissions",
-                        value=f"Difficulty : All\nSovled: {sub.get('count')}\nTotal submitted and AC: {sub.get('submissions')}",
-                        inline=False,
-                    )
-                    break
-
-        embed.add_field(name="Other Links", value=value, inline=False)
-        profile = info.get("profile")
-        assert profile
-        embed.set_thumbnail(url=profile.get("userAvatar"))
-        embed.add_field(name="Country", value=profile.get("countryName"), inline=True)
-        embed.description = f"User's About me: {profile.get('aboutMe')}"
-        company = profile.get("company", "")
-        job_title = profile.get("jobTitle", "")
-        school = profile.get("school", "")
-        if company:
-            value = company
-            if job_title:
-                value = company + "\nJob Title: " + job_title
-            embed.add_field(name="Company", value=value, inline=False)
-        if school:
-            embed.add_field(name="School", value=school, inline=True)
-        websites = profile.get("websites")
-        if websites:
-            embed.add_field(name="Websites", value="\n".join(websites), inline=False)
-        return embed
-
-    async def get_embed_color(self, difficulty_db_repr: int) -> discord.Color:
-        try:
-            logger.debug(f"Getting embed color for difficulty {difficulty_db_repr}")
-            difficulty = ProblemDifficulity.from_db_repr(difficulty_db_repr)
-            return difficulty.embed_color
-        except Exception:
-            return discord.Color.blue()  # Default to blue if unknown
+            self.leetcode_problem_manager.weekly_cache_refresh.start()
 
     async def parse_problem_desc(self, content: str) -> str:
         """
@@ -108,46 +44,20 @@ class LeetCode(commands.Cog):
             return "No description available."
         return content[:preview_len] + ("..." if len(content) > preview_len else "")
 
-    async def get_problem_desc_picture(self, problem: Problem) -> str:
-        return ""
-
-    async def get_problem_desc_embed(
-        self, problem: Problem, problem_tags: Set[TopicTags]
-    ) -> Embed:
-        embed = create_themed_embed(
-            title=f"{problem.problem_frontend_id}. {problem.title}",
-            client=self.bot,
-            description=problem.description,
-        )
-        embed.url = problem.url
-        difficulty_str = self.get_difficulty_str_repr(problem.difficulty)
-        embed.add_field(name="Difficulty", value=difficulty_str, inline=True)
-        embed.add_field(
-            name="Tags",
-            value=", ".join(map(lambda tag: tag.tag_name, problem_tags)),
-            inline=True,
-        )
-        embed.color = await self.get_embed_color(problem.difficulty)
-        assert self.bot.user is not None and self.bot.user.avatar is not None
-        embed.set_footer(
-            text=f"LeetCode Bot - {self.bot.user.display_name}",
-            icon_url=self.bot.user.avatar.url,
-        )
-        return embed
-
     async def _create_thread(
         self,
         channel: ForumChannel,
         problem: Problem,
         problem_tags: Set[TopicTags],
-        is_daily: bool = False,
     ) -> ThreadWithMessage:
         logger.info(
             f"Creating thread in channel {channel.id} for problem {problem.problem_frontend_id}"
         )
         thread_name = f"{problem.problem_frontend_id}. {problem.title}"
         thread_content = f"{problem.url}\n"
-        thread_embed = await self.get_problem_desc_embed(problem, problem_tags)
+        thread_embed = get_problem_desc_embed(
+            problem=problem, problem_tags=problem_tags, bot=self.bot
+        )
         available_tags = channel.available_tags
         available_tag_names = {tag.name for tag in channel.available_tags}
 
@@ -155,7 +65,6 @@ class LeetCode(commands.Cog):
 
         tags_to_create = {
             "LeetCode",
-            "Problem" if not is_daily else "Daily",
             "Easy",
             "Medium",
             "Hard",
@@ -165,8 +74,7 @@ class LeetCode(commands.Cog):
 
         tags_to_assign = {
             "LeetCode",
-            "Problem" if not is_daily else "Daily",
-            self.get_difficulty_str_repr(problem.difficulty),
+            get_difficulty_str_repr(problem.difficulty),
         }
 
         thread = await channel.create_thread(
@@ -226,7 +134,6 @@ class LeetCode(commands.Cog):
                 channel=forum_channel,
                 problem=problem_obj,
                 problem_tags=problem["tags"],
-                is_daily=True,
             )
             await interaction.followup.send(
                 f"Created thread for today's problem in {thread.thread.mention}."
@@ -250,7 +157,6 @@ class LeetCode(commands.Cog):
                     channel=forum_channel,
                     problem=problem_obj,
                     problem_tags=problem["tags"],
-                    is_daily=True,
                 )
                 logger.info(
                     f"Created new thread in channel {forum_channel.id} for today's problem {problem_obj.problem_frontend_id}"
@@ -396,7 +302,7 @@ class LeetCode(commands.Cog):
             logger.debug(f"Problem object: {problem_obj}")
             logger.info(f"Sending problem description for problem ID {id}")
             await interaction.followup.send(
-                embed=await self.get_problem_desc_embed(problem_obj, problem["tags"])
+                embed=get_problem_desc_embed(problem_obj, problem["tags"], bot=self.bot)
             )
         except Exception as e:
             logger.error("An error occurred", exc_info=e)
@@ -491,7 +397,7 @@ class LeetCode(commands.Cog):
         await interaction.response.defer(thinking=True, ephemeral=False)
         try:
             info = await self.leetcode_api.user_info(username=username)
-            embed = self.get_user_info_embed(username=username, info=info)
+            embed = get_user_info_embed(username=username, info=info, bot=self.bot)
             await interaction.followup.send(embed=embed)
         except Exception as e:
             logger.error(

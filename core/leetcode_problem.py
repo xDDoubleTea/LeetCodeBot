@@ -4,6 +4,7 @@ from db.database_manager import DatabaseManager
 from db.problem import Problem, TopicTags, problem_tags_association
 from typing import Dict, Literal, Set, Sequence
 from sqlalchemy import select
+from discord.ext import tasks
 from sqlalchemy.orm import selectinload
 from sqlalchemy.dialects.sqlite import insert as sqlite_upsert
 
@@ -23,6 +24,12 @@ class LeetCodeProblemManager:
         self.leetcode_api: LeetCodeAPI = leetcode_api
         self.database_manager: DatabaseManager = database_manager
         self.logger: logging.Logger = logger
+
+    @tasks.loop(hours=24 * 7, name="weekly_cache_refresh")
+    async def weekly_cache_refresh(self) -> None:
+        self.logger.info("Refreshing LeetCode problems cache...")
+        await self.refresh_cache()
+        self.logger.info("LeetCode problems cache refreshed.")
 
     async def _bulk_upsert_problems(self, api_problems: Dict[int, Problem]) -> None:
         with self.database_manager as db:
