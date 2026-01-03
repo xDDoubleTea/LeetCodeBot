@@ -1,22 +1,18 @@
-from typing import Set
-from discord import Interaction, app_commands, Thread
-from discord.channel import ForumChannel, ThreadWithMessage
+from typing import Literal, Optional, Set
+
+from discord import Interaction, app_commands
+from discord.channel import ForumChannel
 from discord.ext import commands
-from core.leetcode_api import FetchError
-from utils.discord_utils import try_get_channel
-from utils.embed_presenters import (
-    get_difficulty_str_repr,
-    get_problem_desc_embed,
-    get_user_info_embed,
-)
 
 from config.constants import preview_len
 from config.secrets import debug
-
-from db.problem import Problem, TopicTags
-from main import LeetCodeBot
-
-from main import logger
+from db.problem import Problem
+from main import LeetCodeBot, logger
+from utils.embed_presenters import (
+    get_problem_desc_embed,
+    get_user_info_embed,
+)
+from utils.handle_leetcode_interation import handle_leetcode_interaction
 
 
 class LeetCode(commands.Cog):
@@ -44,136 +40,15 @@ class LeetCode(commands.Cog):
             return "No description available."
         return content[:preview_len] + ("..." if len(content) > preview_len else "")
 
-    async def _create_thread(
-        self,
-        channel: ForumChannel,
-        problem: Problem,
-        problem_tags: Set[TopicTags],
-    ) -> ThreadWithMessage:
-        logger.info(
-            f"Creating thread in channel {channel.id} for problem {problem.problem_frontend_id}"
-        )
-        thread_name = f"{problem.problem_frontend_id}. {problem.title}"
-        thread_content = f"{problem.url}\n"
-        thread_embed = get_problem_desc_embed(
-            problem=problem, problem_tags=problem_tags, bot=self.bot
-        )
-        available_tags = channel.available_tags
-        available_tag_names = {tag.name for tag in channel.available_tags}
-
-        logger.debug(f"Available tags in channel {channel.id}: {available_tag_names}")
-
-        tags_to_create = {
-            "LeetCode",
-            "Easy",
-            "Medium",
-            "Hard",
-        } - available_tag_names
-        for tag_name in tags_to_create:
-            await channel.create_tag(name=tag_name)
-
-        tags_to_assign = {
-            "LeetCode",
-            get_difficulty_str_repr(problem.difficulty),
-        }
-
-        thread = await channel.create_thread(
-            name=thread_name,
-            content=thread_content,
-            embed=thread_embed,
-            applied_tags=[tag for tag in available_tags if tag.name in tags_to_assign],
-        )
-        await self.problem_threads_manager.create_thread_in_db(
-            problem_frontend_id=problem.problem_frontend_id,
-            guild_id=channel.guild.id,
-            thread_id=thread.thread.id,
-        )
-        return thread
-
     @app_commands.command(name="daily", description="Get today's LeetCode problem")
     @app_commands.guild_only()
-    async def daily_problem(self, interaction: Interaction) -> None:
-        await interaction.response.defer(thinking=True)
-        logger.info(f"Fetching daily problem for guild {interaction.guild_id}")
-        problem = await self.leetcode_problem_manager.get_daily_problem()
-        logger.debug(f"Daily problem fetched: {problem}")
-        if not problem:
-            await interaction.followup.send("Daily problem not found.")
-            return
-
-        problem_obj = problem["problem"]
-        assert isinstance(problem_obj, Problem)
-        assert isinstance(problem["tags"], Set)
+    @handle_leetcode_interaction(is_daily=True)
+    async def daily_problem(self, interaction: Interaction) -> dict | None:
         assert interaction.guild
-        channel = await self.problem_threads_manager.get_forum_channel(
-            interaction.guild.id
-        )
-        logger.debug(f"Forum channel fetched: {channel}")
-        if not channel:
-            await interaction.followup.send(
-                "The bot doesn't know which Fourm Channel should the problem be created! Please use /set_thread_channel first to set the Fourm Channel!"
-            )
-            return
-        forum_channel = await try_get_channel(
-            guild=interaction.guild, channel_id=channel.channel_id
-        )
-        logger.debug(f"Forum channel object: {forum_channel}")
-        if not isinstance(forum_channel, ForumChannel):
-            await interaction.followup.send(
-                "Something went wrong! The forum channel is not found or not a valid forum channel. Contact the developer for help."
-            )
-            return
-        forum_thread = await self.problem_threads_manager.get_thread_by_problem_id(
-            problem_obj.problem_frontend_id, interaction.guild.id
-        )
-        logger.debug(f"Forum thread fetched: {forum_thread}")
-
-        logger.info("Creating or fetching thread for today's problem")
-        if not forum_thread:
-            thread = await self._create_thread(
-                channel=forum_channel,
-                problem=problem_obj,
-                problem_tags=problem["tags"],
-            )
-            await interaction.followup.send(
-                f"Created thread for today's problem in {thread.thread.mention}."
-            )
-        else:
-            thread_channel = await try_get_channel(
-                guild=interaction.guild, channel_id=forum_thread.thread_id
-            )
-            if not thread_channel:
-                logger.warning(
-                    "The thread for today's problem was supposed to exist but cannot be found."
-                )
-                msg = await interaction.followup.send(
-                    "The thread for today's problem was supposed to exist but cannot be found. It might have been deleted. I will create a new one now."
-                )
-
-                await self.problem_threads_manager.delete_thread_from_db(
-                    thread_id=forum_thread.thread_id
-                )
-                thread = await self._create_thread(
-                    channel=forum_channel,
-                    problem=problem_obj,
-                    problem_tags=problem["tags"],
-                )
-                logger.info(
-                    f"Created new thread in channel {forum_channel.id} for today's problem {problem_obj.problem_frontend_id}"
-                )
-                if msg:
-                    msg.edit(
-                        f"Created new thread for today's problem in {thread.thread.mention}."
-                    )
-
-                return
-            await interaction.followup.send(
-                f"Thread for today's problem already exists: {thread_channel.mention}"
-            )
-            assert isinstance(thread_channel, Thread)
-            await thread_channel.send(
-                f"Thread already exists {interaction.user.mention}"
-            )
+        logger.info(f"Fetching today's problem for guild {interaction.guild.id}")
+        problem = await self.leetcode_problem_manager.get_daily_problem()
+        logger.debug(f"Problem fetched: {problem}")
+        return problem
 
     @app_commands.command(
         name="problem",
@@ -181,106 +56,38 @@ class LeetCode(commands.Cog):
     )
     @app_commands.describe(id="The ID of the LeetCode problem")
     @app_commands.guild_only()
-    async def leetcode_problem(self, interaction: Interaction, id: int) -> None:
-        await interaction.response.defer(thinking=True)
-        try:
-            assert interaction.guild
-            logger.info(
-                f"Fetching problem with ID {id} for guild {interaction.guild.id}"
-            )
-            channel = await self.problem_threads_manager.get_forum_channel(
-                interaction.guild.id
-            )
-            if not channel:
-                await interaction.followup.send(
-                    "The bot doesn't know which Fourm Channel should the problem be created! Please use /set_thread_channel first to set the Fourm Channel!"
-                )
-                return
-            logger.debug(f"Forum channel fetched: {channel}")
-            logger.debug(f"Fetching problem with ID {id}")
-            problem = await self.leetcode_problem_manager.get_problem(id)
-            logger.debug(f"Problem fetched: {problem}")
-            if not problem:
-                await interaction.followup.send(f"Problem with ID {id} not found.")
-                return
-            problem_obj = problem["problem"]
-            assert isinstance(problem_obj, Problem)
+    @handle_leetcode_interaction(is_daily=False)
+    async def leetcode_problem(self, interaction: Interaction, id: int) -> dict | None:
+        assert interaction.guild
+        logger.info(f"Fetching problem with ID {id} for guild {interaction.guild.id}")
+        problem = await self.leetcode_problem_manager.get_problem_with_frontend_id(id)
+        logger.debug(f"Problem fetched: {problem}")
+        return problem
 
-            logger.debug(f"Problem object: {problem_obj}")
-
-            logger.info(
-                f"Creating or fetching thread for problem {id} in guild {interaction.guild.id}"
-            )
-            forum_channel = await try_get_channel(
-                guild=interaction.guild, channel_id=channel.channel_id
-            )
-            if not isinstance(forum_channel, ForumChannel):
-                await interaction.followup.send(
-                    "Something went wrong! The forum channel is not found or not a valid forum channel. Contact the developer for help."
-                )
-                return
-            forum_thread = await self.problem_threads_manager.get_thread_by_problem_id(
-                problem_obj.problem_frontend_id, interaction.guild.id
-            )
-            logger.debug(f"Forum thread fetched: {forum_thread}")
-
-            if not forum_thread:
-                assert isinstance(problem["tags"], Set)
-                thread = await self._create_thread(
-                    channel=forum_channel,
-                    problem=problem_obj,
-                    problem_tags=problem["tags"],
-                )
-                await interaction.followup.send(
-                    f"Created thread for problem {id} in {thread.thread.mention}."
-                )
-            else:
-                thread_channel = await try_get_channel(
-                    guild=interaction.guild, channel_id=forum_thread.thread_id
-                )
-                if not thread_channel:
-                    msg = await interaction.followup.send(
-                        "The thread for this problem was supposed to exist but cannot be found. It might have been deleted. I will create a new one now."
-                    )
-                    logger.warning(
-                        "The thread for problem {id} was supposed to exist but cannot be found."
-                    )
-                    await self.problem_threads_manager.delete_thread_from_db(
-                        thread_id=forum_thread.thread_id
-                    )
-                    assert isinstance(problem["tags"], Set)
-                    thread = await self._create_thread(
-                        channel=forum_channel,
-                        problem=problem_obj,
-                        problem_tags=problem["tags"],
-                    )
-                    logger.info(
-                        f"Created new thread in channel {forum_channel.id} for problem {id}"
-                    )
-                    if msg:
-                        msg.edit(
-                            "Created new thread for problem {id} in {thread.thread.mention}."
-                        )
-                    return
-                logger.info(f"Thread for problem {id} already exists.")
-                await interaction.followup.send(
-                    f"Thread for problem {id} already exists: {thread_channel.mention}"
-                )
-                assert isinstance(thread_channel, Thread)
-                await thread_channel.send(
-                    f"Thread already exists {interaction.user.mention}"
-                )
-
-        except FetchError as e:
-            logger.error("FetchError occurred", exc_info=e)
-            await interaction.followup.send(f"{e}")
-            return
-        except Exception as e:
-            logger.error("An error occurred", exc_info=e)
-            await interaction.followup.send(
-                f"An error occurred while processing the request: {e}"
-            )
-            return
+    @app_commands.command(
+        name="random", description="Returns a random leetcode problem"
+    )
+    @app_commands.describe(
+        difficulty="The problem difficulty",
+        premium="Whether to include premium problems, default is False",
+    )
+    @app_commands.guild_only()
+    @handle_leetcode_interaction(is_daily=False)
+    async def random_problem(
+        self,
+        interaction: Interaction,
+        difficulty: Optional[Literal["Easy", "Medium", "Hard"]],
+        premium: bool = False,
+    ):
+        assert interaction.guild
+        logger.info(
+            f"Fetching random problem (Difficulty: {difficulty}) for guild {interaction.guild.id}"
+        )
+        problem = await self.leetcode_problem_manager.get_random_problem(
+            difficulty=difficulty, premium=premium
+        )
+        logger.debug(f"Problem fetched: {problem}")
+        return problem
 
     @app_commands.command(
         name="desc", description="Get LeetCode Problem description with problem ID"
@@ -292,7 +99,9 @@ class LeetCode(commands.Cog):
             logger.info(
                 f"Fetching problem description with ID {id} for guild {interaction.guild_id}"
             )
-            problem = await self.leetcode_problem_manager.get_problem(id)
+            problem = await self.leetcode_problem_manager.get_problem_with_frontend_id(
+                id
+            )
             if not problem:
                 await interaction.followup.send(f"Problem with ID {id} not found.")
                 return

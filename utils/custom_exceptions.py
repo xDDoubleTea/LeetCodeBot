@@ -1,0 +1,2 @@
+class ForumChannelNotFound(Exception):
+    pass
