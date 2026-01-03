@@ -80,6 +80,9 @@ def handle_leetcode_interaction(is_daily: bool = False):
                     else:
                         assert isinstance(thread, Thread)
                         msg = f"Thread for problem {problem_obj.problem_frontend_id} already exists: {thread.mention}"
+                        await thread.send(
+                            f"Thread already exists {interaction.user.mention}"
+                        )
 
                 await interaction.followup.send(msg)
 
