@@ -1,4 +1,4 @@
-from enum import Enum
+from enum import Enum, IntEnum
 import discord
 
 
@@ -25,3 +25,8 @@ class ProblemDifficulity(Enum):
             if difficulty.str_repr.lower() == str_repr.lower():
                 return difficulty
         raise ValueError(f"No matching difficulty for str_repr: {str_repr}")
+
+
+class ThreadCreationEnum(IntEnum):
+    REOPEN = 0
+    CREATE = 1

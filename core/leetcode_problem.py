@@ -1,12 +1,15 @@
 import logging
+import random
 from core.leetcode_api import LeetCodeAPI
 from db.database_manager import DatabaseManager
 from db.problem import Problem, TopicTags, problem_tags_association
-from typing import Dict, Literal, Set, Sequence
+from typing import Dict, Literal, Optional, Set, Sequence
 from sqlalchemy import select
 from discord.ext import tasks
 from sqlalchemy.orm import selectinload
 from sqlalchemy.dialects.sqlite import insert as sqlite_upsert
+
+from models.leetcode import ProblemDifficulity
 
 
 class ProblemNotFound(Exception):
@@ -47,6 +50,7 @@ class LeetCodeProblemManager:
                     "difficulty": insert_stmt.excluded.difficulty,
                     "description": insert_stmt.excluded.description,
                     "problem_frontend_id": insert_stmt.excluded.problem_frontend_id,
+                    "premium": insert_stmt.excluded.premium,
                 },
             )
             db.execute(insert_stmt, mappings)
@@ -189,7 +193,33 @@ class LeetCodeProblemManager:
             problem = db.execute(stmt).scalars().first()
             return problem
 
-    async def get_problem(
+    async def get_random_problem(
+        self, difficulty: Optional[Literal["Easy", "Medium", "Hard"]], premium: bool
+    ) -> Dict[Literal["problem", "tags"], Problem | Set[TopicTags]] | None:
+        if not difficulty:
+            problem_frontend_id = random.choice(list(self.problem_cache.keys()))
+            return await self.get_problem_with_frontend_id(
+                problem_frontend_id=problem_frontend_id
+            )
+
+        with self.database_manager as db:
+            self.logger.info(
+                f"Fetching problem with difficulty {difficulty} from database"
+            )
+
+            stmt = (
+                select(Problem)
+                .where(
+                    Problem.difficulty
+                    == ProblemDifficulity.from_str_repr(difficulty).db_repr
+                )
+                .options(selectinload(Problem.tags))
+            )
+            problems = db.execute(stmt).scalars().all()
+            problem = random.choice(problems)
+            return {"problem": problem, "tags": set(problem.tags)}
+
+    async def get_problem_with_frontend_id(
         self, problem_frontend_id: int
     ) -> Dict[Literal["problem", "tags"], Problem | Set[TopicTags]] | None:
         """
