@@ -23,7 +23,8 @@ class LeetCodeProblemManager:
         database_manager: DatabaseManager,
         logger: logging.Logger,
     ) -> None:
-        self.problem_cache: Dict[int, Problem] = dict()
+        self.all_problem_cache: Dict[int, Problem] = dict()
+        self.free_problem_cache: Dict[int, Problem] = dict()
         self.leetcode_api: LeetCodeAPI = leetcode_api
         self.database_manager: DatabaseManager = database_manager
         self.logger: logging.Logger = logger
@@ -123,8 +124,13 @@ class LeetCodeProblemManager:
             self.logger.info(
                 "Initializing problem cache with %d problems.", len(problems)
             )
-            self.problem_cache = {
+            self.all_problem_cache = {
                 problem.problem_frontend_id: problem for problem in problems
+            }
+            self.free_problem_cache = {
+                problem.problem_frontend_id: problem
+                for problem in problems
+                if not problem.premium
             }
         except Exception as e:
             self.logger.error("Error initializing cache", exc_info=e)
@@ -160,7 +166,7 @@ class LeetCodeProblemManager:
             problems = await self.get_problems_from_db()
             self.logger.info("Rebuilding problem cache...")
             for problem in problems:
-                self.problem_cache[problem.problem_frontend_id] = problem
+                self.all_problem_cache[problem.problem_frontend_id] = problem
             self.logger.info("Problem cache refresh completed.")
         except Exception as e:
             self.logger.error("Error refreshing cache", exc_info=e)
@@ -197,7 +203,12 @@ class LeetCodeProblemManager:
         self, difficulty: Optional[Literal["Easy", "Medium", "Hard"]], premium: bool
     ) -> Dict[Literal["problem", "tags"], Problem | Set[TopicTags]] | None:
         if not difficulty:
-            problem_frontend_id = random.choice(list(self.problem_cache.keys()))
+            problem_pool = list(
+                self.all_problem_cache.keys()
+                if premium
+                else self.free_problem_cache.keys()
+            )
+            problem_frontend_id = random.choice(problem_pool)
             return await self.get_problem_with_frontend_id(
                 problem_frontend_id=problem_frontend_id
             )
@@ -211,10 +222,13 @@ class LeetCodeProblemManager:
                 select(Problem)
                 .where(
                     Problem.difficulty
-                    == ProblemDifficulity.from_str_repr(difficulty).db_repr
+                    == ProblemDifficulity.from_str_repr(difficulty).db_repr,
                 )
                 .options(selectinload(Problem.tags))
             )
+            if not premium:
+                stmt = stmt.where(Problem.premium.is_(False))
+
             problems = db.execute(stmt).scalars().all()
             problem = random.choice(problems)
             return {"problem": problem, "tags": set(problem.tags)}
@@ -225,7 +239,7 @@ class LeetCodeProblemManager:
         """
         Retrieves a problem by its ID from the cache or fetches it from LeetCode if not present.
         """
-        if problem_in_cache := self.problem_cache.get(problem_frontend_id, None):
+        if problem_in_cache := self.all_problem_cache.get(problem_frontend_id, None):
             self.logger.debug(f"Problem with ID {problem_frontend_id} found in cache.")
             self.logger.debug(
                 f"Problem Tags: {[tag.tag_name for tag in problem_in_cache.tags]}"
@@ -241,7 +255,7 @@ class LeetCodeProblemManager:
             )
             self.logger.debug(f"DB Problem: {problem}")
             if problem:
-                self.problem_cache[problem_frontend_id] = problem
+                self.all_problem_cache[problem_frontend_id] = problem
                 return {"problem": problem, "tags": set(problem.tags)}
 
             self.logger.info(
@@ -259,7 +273,7 @@ class LeetCodeProblemManager:
             tags = problem_data["tags"]
             assert isinstance(tags, set) and isinstance(problem, Problem)
             problem = await self.add_problem_to_db(problem, tags)
-            self.problem_cache[problem_frontend_id] = problem
+            self.all_problem_cache[problem_frontend_id] = problem
             self.logger.debug(f"New Problem Added: {problem}")
             return {"problem": problem, "tags": set(problem.tags)}
         except Exception as e:
@@ -285,10 +299,12 @@ class LeetCodeProblemManager:
             tags = problem_data["tags"]
             assert isinstance(tags, set) and isinstance(problem, Problem)
             self.logger.debug(f"Daily Problem: {problem}")
-            if problem.problem_frontend_id in self.problem_cache.keys():
+            if problem.problem_frontend_id in self.all_problem_cache.keys():
                 return {
-                    "problem": self.problem_cache[problem.problem_frontend_id],
-                    "tags": set(self.problem_cache[problem.problem_frontend_id].tags),
+                    "problem": self.all_problem_cache[problem.problem_frontend_id],
+                    "tags": set(
+                        self.all_problem_cache[problem.problem_frontend_id].tags
+                    ),
                 }
             self.logger.info(
                 f"Daily problem with ID {problem.problem_frontend_id} not found in cache. Checking DB."
@@ -296,7 +312,7 @@ class LeetCodeProblemManager:
             if db_problem := await self.get_problem_from_db(
                 problem.problem_frontend_id
             ):
-                self.problem_cache[problem.problem_frontend_id] = db_problem
+                self.all_problem_cache[problem.problem_frontend_id] = db_problem
                 return {"problem": db_problem, "tags": set(db_problem.tags)}
 
             self.logger.info(
@@ -305,7 +321,7 @@ class LeetCodeProblemManager:
             new_problem = await self.add_problem_to_db(problem, tags)
 
             self.logger.debug(f"New Daily Problem Added: {new_problem}")
-            self.problem_cache[problem.problem_frontend_id] = new_problem
+            self.all_problem_cache[problem.problem_frontend_id] = new_problem
             self.logger.debug(
                 f"Daily Problem Tags: {[tag.tag_name for tag in new_problem.tags]}"
             )
@@ -368,5 +384,5 @@ class LeetCodeProblemManager:
             if db_problem:
                 db.delete(db_problem)
                 db.commit()
-                if problem_frontend_id in self.problem_cache:
-                    del self.problem_cache[problem_frontend_id]
+                if problem_frontend_id in self.all_problem_cache:
+                    del self.all_problem_cache[problem_frontend_id]

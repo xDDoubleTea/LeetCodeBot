@@ -228,6 +228,10 @@ class ProblemThreadsManager:
         )
         thread_name = f"{problem.problem_frontend_id}. {problem.title}"
         thread_content = f"{problem.url}\n"
+        if problem.premium:
+            thread_content += (
+                "This problem is premium only, so there is no description available."
+            )
         thread_embed = get_problem_desc_embed(
             problem=problem, problem_tags=problem_tags, bot=bot
         )
