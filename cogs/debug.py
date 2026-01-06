@@ -32,7 +32,6 @@ class Debug(commands.Cog):
             "Printing problems cache to console...", ephemeral=True
         )
         logger.debug("Problems Cache:")
-        print(self.bot.leetcode_problem_manger.problem_cache)
 
     @debug.command(
         name="fetch_problem",

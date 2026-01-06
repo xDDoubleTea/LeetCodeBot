@@ -67,6 +67,9 @@ def handle_leetcode_interaction(is_daily: bool = False):
                     else:
                         assert isinstance(thread, Thread)
                         msg = f"Thread for today's problem already exists: {thread.mention}"
+                        await thread.send(
+                            f"Thread already exists {interaction.user.mention}"
+                        )
                 else:
                     # Add extra context for random problems if difficulty was specified
                     extra_info = ""
