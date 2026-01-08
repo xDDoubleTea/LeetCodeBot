@@ -87,6 +87,19 @@ class ProblemThreadsManager:
                 return forum_channel
         return None
 
+    async def get_problem_frontend_id_by_thread_id(self, thread_id: int) -> int | None:
+        problem_thread = await self.get_thread_by_thread_id(thread_id=thread_id)
+        if not problem_thread:
+            return None
+        self.logger.debug(problem_thread)
+
+        problem = await self.leetcode_problem_manager.get_problem_from_db(
+            problem_db_id=problem_thread.problem_db_id
+        )
+        if not problem:
+            return None
+        return problem.problem_frontend_id
+
     async def get_thread_by_thread_id(self, thread_id: int) -> ProblemThreads | None:
         self.logger.debug(
             f"Fetching problem thread for thread ID {thread_id} from cache."

@@ -1,15 +1,13 @@
-from typing import Literal, Optional, Set
+from typing import Literal, Optional
 
-from discord import Interaction, app_commands
+from discord import Interaction, app_commands, Thread
 from discord.channel import ForumChannel
 from discord.ext import commands
 
 from config.constants import preview_len
 from config.secrets import debug
-from db.problem import Problem
 from main import LeetCodeBot, logger
 from utils.embed_presenters import (
-    get_problem_desc_embed,
     get_user_info_embed,
 )
 from utils.handle_leetcode_interation import handle_leetcode_interaction
@@ -92,27 +90,45 @@ class LeetCode(commands.Cog):
     @app_commands.command(
         name="desc", description="Get LeetCode Problem description with problem ID"
     )
+    @app_commands.describe(
+        id="The problem id. If not provided, attempts to resovle problem id from thread."
+    )
     @app_commands.guild_only()
-    async def leetcode_desc(self, interaction: Interaction, id: int) -> None:
+    async def leetcode_desc(self, interaction: Interaction, id: Optional[int]) -> None:
         await interaction.response.defer(thinking=True)
         try:
+            assert interaction.guild
+            problem_frontend_id = None
+            if id:
+                problem_frontend_id = id
+
+            if not id and not isinstance(interaction.channel, Thread):
+                await interaction.followup.send(
+                    "This command should be used in a problem thread if problem ID is not provided"
+                )
+                return
+            if not id and isinstance(interaction.channel, Thread):
+                problem_frontend_id = await self.problem_threads_manager.get_problem_frontend_id_by_thread_id(
+                    thread_id=interaction.channel.id
+                )
+            if not problem_frontend_id:
+                await interaction.followup.send(
+                    "This channel does not seem to be a problem thread..."
+                )
+                return
+
             logger.info(
                 f"Fetching problem description with ID {id} for guild {interaction.guild_id}"
             )
-            problem = await self.leetcode_problem_manager.get_problem_with_frontend_id(
-                id
+            embed = await self.leetcode_problem_manager.get_problem_desc(
+                problem_frontend_id=problem_frontend_id,
+                bot=self.bot,
             )
-            if not problem:
-                await interaction.followup.send(f"Problem with ID {id} not found.")
+            if not embed:
+                await interaction.followup.send(f"Problem id with {id} not found.")
                 return
-            problem_obj = problem["problem"]
-            assert isinstance(problem_obj, Problem)
-            assert isinstance(problem["tags"], Set)
-            logger.debug(f"Problem object: {problem_obj}")
-            logger.info(f"Sending problem description for problem ID {id}")
-            await interaction.followup.send(
-                embed=get_problem_desc_embed(problem_obj, problem["tags"], bot=self.bot)
-            )
+
+            await interaction.followup.send(embed=embed)
         except Exception as e:
             logger.error("An error occurred", exc_info=e)
             await interaction.followup.send(
