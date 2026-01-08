@@ -5,7 +5,7 @@ from utils.embed_utils import create_themed_embed
 from models.leetcode import ProblemDifficulity
 import discord
 from db.problem import Problem, TopicTags
-from main import logger
+# from main import logger
 
 
 def get_difficulty_str_repr(difficulty_db_repr: int) -> str:
@@ -69,7 +69,7 @@ def get_user_info_embed(username: str, info: dict, bot: commands.Bot | Client) -
 
 def get_embed_color(difficulty_db_repr: int) -> discord.Color:
     try:
-        logger.debug(f"Getting embed color for difficulty {difficulty_db_repr}")
+        # logger.debug(f"Getting embed color for difficulty {difficulty_db_repr}")
         difficulty = ProblemDifficulity.from_db_repr(difficulty_db_repr)
         return difficulty.embed_color
     except Exception:

@@ -76,6 +76,7 @@ class LeetCodeAPI:
                 description=self._parse_problem_desc(
                     response_problem.get("content", "")
                 ),
+                premium=response_problem.get("isPaidOnly", False),
             )
             self.logger.debug("Parsed Daily Problem: %s", problem)
             problem_tags: List[dict] = response_problem.get("topicTags", [])
@@ -107,6 +108,7 @@ class LeetCodeAPI:
                     response_json.get("difficulty", "")
                 ).db_repr,
                 description=self._parse_problem_desc(response_json.get("content", "")),
+                premium=response_json.get("isPaidOnly", False),
             )
             self.logger.debug("Parsed Single Problem: %s", problem)
             problem_tags: List[dict] = response_json.get("topicTags", [])
@@ -134,7 +136,7 @@ class LeetCodeAPI:
             int, Dict[Literal["problem", "tags"], Problem | Set[TopicTags]]
         ] = {}
         tags: Set[TopicTags] = set()
-        self.logger.debug("All Problems Response: %s", response_json)
+        # self.logger.debug("All Problems Response: %s", response_json)
         self.logger.info("Parsing all problem responses")
         for item in response_json:
             problem_data = item.get("data", {})
@@ -155,7 +157,11 @@ class LeetCodeAPI:
                     description=self._parse_problem_desc(
                         problem_data_question.get("content", "")
                     ),
+                    premium=problem_data_question.get("isPaidOnly", False),
                 )
+                if problem_data_question.get("isPaidOnly"):
+                    self.logger.debug(problem_data_question.get("isPaidOnly", False))
+                    self.logger.debug(f"Problem is paid only? {problem.premium}")
                 problem_tags: List[dict] = problem_data_question.get("topicTags", [])
                 cur_tags: Set[TopicTags] = set()
                 for tag in problem_tags:
