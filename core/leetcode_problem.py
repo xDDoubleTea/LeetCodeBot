@@ -1,5 +1,8 @@
 import logging
 import random
+
+from discord import Client, Embed
+from discord.ext.commands import Bot
 from core.leetcode_api import LeetCodeAPI
 from db.database_manager import DatabaseManager
 from db.problem import Problem, TopicTags, problem_tags_association
@@ -10,6 +13,7 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy.dialects.sqlite import insert as sqlite_upsert
 
 from models.leetcode import ProblemDifficulity
+from utils.embed_presenters import get_problem_desc_embed
 
 
 class ProblemNotFound(Exception):
@@ -167,6 +171,8 @@ class LeetCodeProblemManager:
             self.logger.info("Rebuilding problem cache...")
             for problem in problems:
                 self.all_problem_cache[problem.problem_frontend_id] = problem
+                if not problem.premium:
+                    self.free_problem_cache[problem.problem_frontend_id] = problem
             self.logger.info("Problem cache refresh completed.")
         except Exception as e:
             self.logger.error("Error refreshing cache", exc_info=e)
@@ -186,18 +192,43 @@ class LeetCodeProblemManager:
             all_topics = db.execute(stmt).scalars().all()
             return {topic.id: topic for topic in all_topics}
 
-    async def get_problem_from_db(self, problem_frontend_id: int) -> Problem | None:
-        with self.database_manager as db:
+    async def get_problem_from_db(
+        self,
+        problem_frontend_id: Optional[int] = None,
+        problem_db_id: Optional[int] = None,
+    ) -> Problem | None:
+        """
+        Retrieves problem from database. Provide exactly one of the front end id or the backend id for the problem.
+        """
+        if problem_frontend_id and problem_db_id:
+            raise Exception(
+                "Don't provide front end id and database id at the same time when calling this method"
+            )
+        if not problem_frontend_id and not problem_db_id:
+            raise Exception(
+                "Please provide at least one of front end id or database id for a problem"
+            )
+        stmt = select(Problem)
+        if problem_frontend_id:
+            stmt = stmt.where(Problem.problem_frontend_id == problem_frontend_id)
             self.logger.info(
                 f"Fetching problem with frontend ID {problem_frontend_id} from the database."
             )
-            stmt = (
-                select(Problem)
-                .where(Problem.problem_frontend_id == problem_frontend_id)
-                .options(selectinload(Problem.tags))
+        elif problem_db_id:
+            stmt = stmt.where(Problem.id == problem_db_id)
+            self.logger.info(
+                f"Fetching problem with database ID {problem_db_id} from the database."
             )
-            problem = db.execute(stmt).scalars().first()
-            return problem
+
+        stmt = stmt.options(selectinload(Problem.tags))
+        with self.database_manager as db:
+            if problem := db.execute(stmt).scalars().first():
+                self.all_problem_cache[problem.problem_frontend_id] = problem
+                if not problem.premium:
+                    self.free_problem_cache[problem.problem_frontend_id] = problem
+
+                return problem
+        return None
 
     async def get_random_problem(
         self, difficulty: Optional[Literal["Easy", "Medium", "Hard"]], premium: bool
@@ -274,6 +305,8 @@ class LeetCodeProblemManager:
             assert isinstance(tags, set) and isinstance(problem, Problem)
             problem = await self.add_problem_to_db(problem, tags)
             self.all_problem_cache[problem_frontend_id] = problem
+            if not problem.premium:
+                self.free_problem_cache[problem_frontend_id] = problem
             self.logger.debug(f"New Problem Added: {problem}")
             return {"problem": problem, "tags": set(problem.tags)}
         except Exception as e:
@@ -370,6 +403,28 @@ class LeetCodeProblemManager:
                 f"Problem with ID {db_problem.problem_id} added/updated successfully."
             )
             return db_problem
+
+    async def get_problem_desc(
+        self, problem_frontend_id: int, bot: Bot | Client
+    ) -> Embed | None:
+        problem = await self.get_problem_with_frontend_id(
+            problem_frontend_id=problem_frontend_id
+        )
+
+        if not problem:
+            self.logger.info(f"Problem with id {problem_frontend_id} not found.")
+            return
+
+        problem_obj = problem["problem"]
+        assert isinstance(problem_obj, Problem)
+        assert isinstance(problem["tags"], Set)
+        self.logger.debug(f"Problem object: {problem_obj}")
+        self.logger.info(
+            f"Sending problem description for problem ID {problem_frontend_id}"
+        )
+        return get_problem_desc_embed(
+            problem=problem_obj, problem_tags=problem["tags"], bot=bot
+        )
 
     async def delete_problem_from_db(self, problem_frontend_id: int) -> None:
         self.logger.info(
