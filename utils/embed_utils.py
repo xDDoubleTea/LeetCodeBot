@@ -1,9 +1,7 @@
 from typing import Union
 from discord import Embed, Client
-
-import time
-from datetime import date
-
+import datetime
+import calendar
 from config.constants import THEME_COLOR, DEV_ID, default_footer
 
 
@@ -22,14 +20,15 @@ def add_std_footer(embed: Embed, client: Client):
     dev = client.get_user(DEV_ID)
     assert dev is not None and dev.avatar is not None and client.user.avatar is not None
 
-    t = time.localtime()
-    today = date.today()
-    today_date = today.strftime("%Y/%m/%d")
-    current_time = time.strftime("%H:%M:%S", t)
+    dt = datetime.datetime.now(tz=datetime.timezone.utc).timetuple()
+
+    embed.description = (
+        f"<t:{calendar.timegm(dt)}:F>\n{embed.description if embed.description else ''}"
+    )
     embed.set_author(
         name=f"{client.user.display_name}", icon_url=client.user.avatar.url
     )
     embed.set_footer(
-        text=f"{default_footer}\tDeveloped by {dev.name}.\nSent at {today_date} , {current_time}",
+        text=f"{default_footer}\nDeveloped by {dev.name}.\n",
         icon_url=dev.avatar.url,
     )
