@@ -11,11 +11,7 @@ Ensure [git](https://git-scm.com/install/), [uv](https://docs.astral.sh/uv/getti
 ```bash
 git clone https://github.com/xDDoubleTea/LeetCodeBot
 cd LeetCodeBot
-uv sync
-# Unix like with sh installed
-bin/start.sh
-# zsh and bash scripts are also provided in bin/
-# Windows is not tested but similar logic: activate python venv and then run main.py via python.
+uv run main.py
 ```
 
 ### Visual studio code
