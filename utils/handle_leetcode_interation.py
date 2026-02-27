@@ -25,8 +25,6 @@ def handle_leetcode_interaction(is_daily: bool = False):
             try:
                 assert interaction.guild
 
-                # Execute the specific fetching logic defined in the command
-                # The decorated function must return the 'problem' dictionary or None
                 problem = await func(self, interaction, *args, **kwargs)
 
                 if not problem:
@@ -45,7 +43,6 @@ def handle_leetcode_interaction(is_daily: bool = False):
                             await interaction.followup.send("Problem not found.")
                     return
 
-                # Common Thread Management Logic
                 (
                     thread,
                     thread_creation_enum,
@@ -59,7 +56,6 @@ def handle_leetcode_interaction(is_daily: bool = False):
                 problem_obj = problem["problem"]
                 assert isinstance(problem_obj, Problem)
 
-                # Construct Success Message
                 if is_daily:
                     if thread_creation_enum == ThreadCreationEnum.CREATE:
                         assert isinstance(thread, ThreadWithMessage)
@@ -68,10 +64,10 @@ def handle_leetcode_interaction(is_daily: bool = False):
                         assert isinstance(thread, Thread)
                         msg = f"Thread for today's problem already exists: {thread.mention}"
                         await thread.send(
-                            f"Thread already exists {interaction.user.mention}"
+                            f"Thread already exists {interaction.user.mention}",
+                            delete_after=5,
                         )
                 else:
-                    # Add extra context for random problems if difficulty was specified
                     extra_info = ""
                     difficulty = kwargs.get("difficulty")
                     if difficulty:
@@ -84,7 +80,8 @@ def handle_leetcode_interaction(is_daily: bool = False):
                         assert isinstance(thread, Thread)
                         msg = f"Thread for problem {problem_obj.problem_frontend_id} already exists: {thread.mention}"
                         await thread.send(
-                            f"Thread already exists {interaction.user.mention}"
+                            f"Thread already exists {interaction.user.mention}",
+                            delete_after=5,
                         )
 
                 await interaction.followup.send(msg)
