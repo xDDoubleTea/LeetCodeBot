@@ -97,7 +97,7 @@ def get_problem_desc_embed(
     embed.add_field(name="Difficulty", value=difficulty_str, inline=True)
     embed.add_field(
         name="Tags",
-        value=", ".join(map(lambda tag: tag.tag_name, problem_tags)),
+        value=f"||{', '.join(map(lambda tag: tag.tag_name, problem_tags))}||",
         inline=True,
     )
     embed.color = get_embed_color(problem.difficulty)
