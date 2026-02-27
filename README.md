@@ -16,7 +16,7 @@ uv run main.py
 
 ### Visual studio code
 
-If you prefer GUI and you use vscode, you can use the built-in `Clone repository` function to clone this repository. Also make sure to run `uv sync`!!!
+If you prefer GUI and you use vscode, you can use the built-in `Clone repository` function to clone this repository. Also make sure to run `uv sync` for code completions to work properly in vscode!!!
 
 ## Features
 
