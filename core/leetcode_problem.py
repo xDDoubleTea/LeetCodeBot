@@ -12,7 +12,7 @@ from discord.ext import tasks
 from sqlalchemy.orm import selectinload
 from sqlalchemy.dialects.sqlite import insert as sqlite_upsert
 
-from models.leetcode import ProblemDifficulity
+from models.leetcode import ProblemDifficulity, ProblemWithTags
 from utils.embed_presenters import get_problem_desc_embed
 
 
@@ -77,11 +77,9 @@ class LeetCodeProblemManager:
 
     async def _create_problem_tag_associations(
         self,
-        all_api_problems_data: Dict[
-            int, Dict[Literal["problem", "tags"], Problem | Set[TopicTags]]
-        ],
+        all_api_problems_data: Dict[int, ProblemWithTags],
     ) -> None:
-        """Correctly creates associations based on the API data."""
+        """Creates associations based on the API data."""
         with self.database_manager as db:
             self.logger.info("Creating problem-tag associations.")
             db_problems = {p.problem_frontend_id: p.id for p in db.query(Problem).all()}
@@ -90,14 +88,14 @@ class LeetCodeProblemManager:
             self.logger.debug(f"DB Tags: {list(db_tags.items())[:2]} ...")
             associations = []
             for data in all_api_problems_data.values():
-                assert isinstance(data["problem"], Problem)
-                problem_db_id = db_problems[int(data["problem"].problem_frontend_id)]
+                data_problem = data.problem
+                data_tags = data.tags
+                problem_db_id = db_problems[int(data_problem.problem_frontend_id)]
                 if not problem_db_id:
                     raise Exception(
-                        f"Problem ID {data['problem'].problem_frontend_id} not found in DB."
+                        f"Problem ID {data_problem.problem_frontend_id} not found in DB."
                     )
-                assert isinstance(data["tags"], set)
-                for tag in data["tags"]:
+                for tag in data_tags:
                     tag_db_id = db_tags.get(tag.tag_name)
                     if not tag_db_id:
                         raise Exception(f"Tag {tag.tag_name} not found in DB.")
@@ -150,12 +148,12 @@ class LeetCodeProblemManager:
             self.logger.info("Fetching all problems from LeetCode API...")
             api_problems = await self.leetcode_api.fetch_all_problems()
             all_problems: Dict[int, Problem] = {
-                problem_frontend_id: problem["problem"]
-                for problem_frontend_id, problem in api_problems.items()
+                problem_frontend_id: problem_with_tags.problem
+                for problem_frontend_id, problem_with_tags in api_problems.items()
             }
             all_problem_tags: Dict[int, Set[TopicTags]] = {
-                problem_frontend_id: problem["tags"]
-                for problem_frontend_id, problem in api_problems.items()
+                problem_frontend_id: problem_with_tags.tags
+                for problem_frontend_id, problem_with_tags in api_problems.items()
             }
             self.logger.info(f"Fetched {len(all_problems)} problems from LeetCode API.")
             await self._bulk_upsert_problems(all_problems)
@@ -232,7 +230,7 @@ class LeetCodeProblemManager:
 
     async def get_random_problem(
         self, difficulty: Optional[Literal["Easy", "Medium", "Hard"]], premium: bool
-    ) -> Dict[Literal["problem", "tags"], Problem | Set[TopicTags]] | None:
+    ) -> ProblemWithTags:
         if not difficulty:
             problem_pool = list(
                 self.all_problem_cache.keys()
@@ -262,11 +260,14 @@ class LeetCodeProblemManager:
 
             problems = db.execute(stmt).scalars().all()
             problem = random.choice(problems)
-            return {"problem": problem, "tags": set(problem.tags)}
+            return ProblemWithTags(problem, set(problem.tags))
+
+    async def get_problem_with_title_regex(self, problem_title_regex: str):
+        pass
 
     async def get_problem_with_frontend_id(
         self, problem_frontend_id: int
-    ) -> Dict[Literal["problem", "tags"], Problem | Set[TopicTags]] | None:
+    ) -> ProblemWithTags:
         """
         Retrieves a problem by its ID from the cache or fetches it from LeetCode if not present.
         """
@@ -276,7 +277,7 @@ class LeetCodeProblemManager:
                 f"Problem Tags: {[tag.tag_name for tag in problem_in_cache.tags]}"
             )
             self.logger.debug(f"Problem Details: {problem_in_cache}")
-            return {"problem": problem_in_cache, "tags": set(problem_in_cache.tags)}
+            return ProblemWithTags(problem_in_cache, set(problem_in_cache.tags))
         try:
             self.logger.info(
                 f"Problem with ID {problem_frontend_id} not found in cache. Fetching from DB or LeetCode API."
@@ -287,7 +288,7 @@ class LeetCodeProblemManager:
             self.logger.debug(f"DB Problem: {problem}")
             if problem:
                 self.all_problem_cache[problem_frontend_id] = problem
-                return {"problem": problem, "tags": set(problem.tags)}
+                return ProblemWithTags(problem, set(problem.tags))
 
             self.logger.info(
                 f"Problem with ID {problem_frontend_id} not found in DB. Fetching from LeetCode API."
@@ -300,15 +301,16 @@ class LeetCodeProblemManager:
                 raise ProblemNotFound(
                     f"Problem with ID {problem_frontend_id} not found."
                 )
-            problem = problem_data["problem"]
-            tags = problem_data["tags"]
-            assert isinstance(tags, set) and isinstance(problem, Problem)
+            problem = problem_data.problem
+            tags = problem_data.tags
+
             problem = await self.add_problem_to_db(problem, tags)
+
             self.all_problem_cache[problem_frontend_id] = problem
             if not problem.premium:
                 self.free_problem_cache[problem_frontend_id] = problem
             self.logger.debug(f"New Problem Added: {problem}")
-            return {"problem": problem, "tags": set(problem.tags)}
+            return ProblemWithTags(problem, set(problem.tags))
         except Exception as e:
             self.logger.error(
                 f"Error retrieving problem with ID {problem_frontend_id}",
@@ -318,7 +320,7 @@ class LeetCodeProblemManager:
 
     async def get_daily_problem(
         self,
-    ) -> Dict[Literal["problem", "tags"], Problem | Set[TopicTags]] | None:
+    ) -> ProblemWithTags:
         """
         Retrieves the daily problem from LeetCode.
         """
@@ -328,17 +330,15 @@ class LeetCodeProblemManager:
             if not problem_data:
                 raise ProblemNotFound("Daily problem not found.")
             self.logger.debug(f"Daily Problem Data: {problem_data}")
-            problem = problem_data["problem"]
-            tags = problem_data["tags"]
-            assert isinstance(tags, set) and isinstance(problem, Problem)
+            problem = problem_data.problem
+            tags = problem_data.tags
+
             self.logger.debug(f"Daily Problem: {problem}")
             if problem.problem_frontend_id in self.all_problem_cache.keys():
-                return {
-                    "problem": self.all_problem_cache[problem.problem_frontend_id],
-                    "tags": set(
-                        self.all_problem_cache[problem.problem_frontend_id].tags
-                    ),
-                }
+                return ProblemWithTags(
+                    self.all_problem_cache[problem.problem_frontend_id],
+                    set(self.all_problem_cache[problem.problem_frontend_id].tags),
+                )
             self.logger.info(
                 f"Daily problem with ID {problem.problem_frontend_id} not found in cache. Checking DB."
             )
@@ -346,7 +346,7 @@ class LeetCodeProblemManager:
                 problem.problem_frontend_id
             ):
                 self.all_problem_cache[problem.problem_frontend_id] = db_problem
-                return {"problem": db_problem, "tags": set(db_problem.tags)}
+                return ProblemWithTags(db_problem, set(db_problem.tags))
 
             self.logger.info(
                 f"Daily problem with ID {problem.problem_frontend_id} not found in DB. Adding to DB."
@@ -358,10 +358,7 @@ class LeetCodeProblemManager:
             self.logger.debug(
                 f"Daily Problem Tags: {[tag.tag_name for tag in new_problem.tags]}"
             )
-            return {
-                "problem": new_problem,
-                "tags": set(new_problem.tags),
-            }
+            return ProblemWithTags(new_problem, set(new_problem.tags))
 
         except Exception as e:
             self.logger.error("Error retrieving daily problem", exc_info=e)
@@ -407,23 +404,22 @@ class LeetCodeProblemManager:
     async def get_problem_desc(
         self, problem_frontend_id: int, bot: Bot | Client
     ) -> Embed | None:
-        problem = await self.get_problem_with_frontend_id(
+        problem_with_tags = await self.get_problem_with_frontend_id(
             problem_frontend_id=problem_frontend_id
         )
 
-        if not problem:
+        if not problem_with_tags:
             self.logger.info(f"Problem with id {problem_frontend_id} not found.")
             return
 
-        problem_obj = problem["problem"]
-        assert isinstance(problem_obj, Problem)
-        assert isinstance(problem["tags"], Set)
+        problem_obj = problem_with_tags.problem
+
         self.logger.debug(f"Problem object: {problem_obj}")
         self.logger.info(
             f"Sending problem description for problem ID {problem_frontend_id}"
         )
         return get_problem_desc_embed(
-            problem=problem_obj, problem_tags=problem["tags"], bot=bot
+            problem=problem_obj, problem_tags=problem_with_tags.tags, bot=bot
         )
 
     async def delete_problem_from_db(self, problem_frontend_id: int) -> None:

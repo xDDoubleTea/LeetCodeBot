@@ -7,6 +7,7 @@ from discord.ext import commands
 from config.constants import preview_len
 from config.secrets import debug
 from main import LeetCodeBot, logger
+from models.leetcode import ProblemWithTags
 from utils.embed_presenters import (
     get_user_info_embed,
 )
@@ -23,10 +24,7 @@ class LeetCode(commands.Cog):
 
     @commands.Cog.listener()
     async def on_ready(self) -> None:
-        if (
-            not debug
-            and not self.leetcode_problem_manager.weekly_cache_refresh.is_running()
-        ):
+        if not self.leetcode_problem_manager.weekly_cache_refresh.is_running():
             logger.info("Starting weekly LeetCode cache refresh task...")
             self.leetcode_problem_manager.weekly_cache_refresh.start()
 
@@ -41,7 +39,7 @@ class LeetCode(commands.Cog):
     @app_commands.command(name="daily", description="Get today's LeetCode problem")
     @app_commands.guild_only()
     @handle_leetcode_interaction(is_daily=True)
-    async def daily_problem(self, interaction: Interaction) -> dict | None:
+    async def daily_problem(self, interaction: Interaction) -> ProblemWithTags:
         assert interaction.guild
         logger.info(f"Fetching today's problem for guild {interaction.guild.id}")
         problem = await self.leetcode_problem_manager.get_daily_problem()
@@ -55,7 +53,9 @@ class LeetCode(commands.Cog):
     @app_commands.describe(id="The ID of the LeetCode problem")
     @app_commands.guild_only()
     @handle_leetcode_interaction(is_daily=False)
-    async def leetcode_problem(self, interaction: Interaction, id: int) -> dict | None:
+    async def leetcode_problem(
+        self, interaction: Interaction, id: int
+    ) -> ProblemWithTags:
         assert interaction.guild
         logger.info(f"Fetching problem with ID {id} for guild {interaction.guild.id}")
         problem = await self.leetcode_problem_manager.get_problem_with_frontend_id(id)
