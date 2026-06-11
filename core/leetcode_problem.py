@@ -1,13 +1,13 @@
 import logging
 import random
-
+import re2
 from discord import Client, Embed
 from discord.ext.commands import Bot
 from core.leetcode_api import LeetCodeAPI
 from db.database_manager import DatabaseManager
 from db.problem import Problem, TopicTags, problem_tags_association
 from typing import Dict, Literal, Optional, Set, Sequence
-from sqlalchemy import select
+from sqlalchemy import select, ColumnElement
 from discord.ext import tasks
 from sqlalchemy.orm import selectinload
 from sqlalchemy.dialects.sqlite import insert as sqlite_upsert
@@ -190,6 +190,21 @@ class LeetCodeProblemManager:
             all_topics = db.execute(stmt).scalars().all()
             return {topic.id: topic for topic in all_topics}
 
+    async def get_problems_by_criteria(
+        self, *criteria: ColumnElement[bool]
+    ) -> Sequence[Problem]:
+        """Retrieves multiple problems matching the given SQLAlchemy criteria."""
+        stmt = select(Problem).options(selectinload(Problem.tags)).where(*criteria)
+        self.logger.info("Fetching multiple problems with custom criteria")
+
+        with self.database_manager as db:
+            problems = db.execute(stmt).scalars().all()
+            for problem in problems:
+                self.all_problem_cache[problem.problem_frontend_id] = problem
+                if not problem.premium:
+                    self.free_problem_cache[problem.problem_frontend_id] = problem
+            return problems
+
     async def get_problem_from_db(
         self,
         problem_frontend_id: Optional[int] = None,
@@ -262,8 +277,24 @@ class LeetCodeProblemManager:
             problem = random.choice(problems)
             return ProblemWithTags(problem, set(problem.tags))
 
-    async def get_problem_with_title_regex(self, problem_title_regex: str):
-        pass
+    async def get_problem_with_title_regex(
+        self, problem_title_regex: str
+    ) -> Sequence[Problem] | None:
+        try:
+            self.logger.debug("Try compiling regex")
+            re2.compile(problem_title_regex)
+            self.logger.debug("Compiled regex")
+            return await self.get_problems_by_criteria(
+                Problem.title.regexp_match(f"(?i){problem_title_regex}")
+            )
+        except re2.error:
+            raise ValueError("Invalid regular expression provided.")
+
+        except Exception as e:
+            self.logger.error(
+                f"Error retrieving problem with title regex {problem_title_regex}",
+                exc_info=e,
+            )
 
     async def get_problem_with_frontend_id(
         self, problem_frontend_id: int

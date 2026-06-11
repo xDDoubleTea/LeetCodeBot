@@ -14,9 +14,23 @@ from sqlalchemy import create_engine
 import os
 from config.secrets import debug
 from config.logger import setup_logger
+import re2
+from sqlalchemy import event
+from sqlalchemy.engine import Engine
 
 
 logger = logging.getLogger("LeetCodeBot")
+
+
+@event.listens_for(Engine, "connect")
+def sqlite_engine_connect(dbapi_connection, connection_record):
+    def regexp(expr, item):
+        if item is None:
+            return False
+        reg = re2.compile(f"(?i){expr}")
+        return reg.search(item) is not None
+
+    dbapi_connection.create_function("REGEXP", 2, regexp)
 
 
 class LeetCodeBot(commands.Bot):

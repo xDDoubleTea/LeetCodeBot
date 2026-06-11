@@ -46,7 +46,7 @@ def handle_leetcode_interaction(is_daily: bool = False):
                     thread,
                     thread_creation_enum,
                 ) = await self.problem_threads_manager.reopen_or_create_problem_thread(
-                    problem=problem_with_tags,
+                    problem_with_tags=problem_with_tags,
                     guild=interaction.guild,
                     bot=self.bot,
                     is_daily=is_daily,
