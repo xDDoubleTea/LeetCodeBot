@@ -181,9 +181,12 @@ class BasePaginationView(View, Generic[T_meta]):
                             item.custom_id
                             == PaginationViewButtonLayouts.PAGE_DISPLAY.name
                         ):
-                            item.label = "Expired"
+                            item.label = "Expired..."
                         item.style = discord.ButtonStyle.grey
                         item.disabled = True
+                    if isinstance(item, Select):
+                        item.disabled = True
+                        item.placeholder = "Expired..."
                 await self.attached_message.edit(view=self)
             except discord.NotFound:
                 return
