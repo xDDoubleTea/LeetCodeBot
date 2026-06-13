@@ -1,4 +1,4 @@
-from typing import Dict, Literal, Set, Tuple
+from typing import Dict, Set, Tuple
 from discord import ForumChannel, Guild, Thread
 from discord.channel import ThreadWithMessage
 from discord.ext import commands
@@ -10,7 +10,7 @@ from db.problem_threads import ProblemThreads
 from core.leetcode_problem import LeetCodeProblemManager
 from sqlalchemy.dialects.sqlite import insert as sqlite_upsert
 import logging
-from models.leetcode import ThreadCreationEnum
+from models.leetcode import ProblemWithTags, ThreadCreationEnum
 
 from utils.discord_utils import try_get_channel
 from utils.embed_presenters import (
@@ -122,13 +122,14 @@ class ProblemThreadsManager:
             f"Fetching problem thread for problem ID {problem_frontend_id} in guild {guild_id} from database."
         )
         with self.database_manager as db:
-            problem = await self.leetcode_problem_manager.get_problem_with_frontend_id(
-                problem_frontend_id
+            problem_with_tags = (
+                await self.leetcode_problem_manager.get_problem_with_frontend_id(
+                    problem_frontend_id
+                )
             )
-            if not problem:
+            if not problem_with_tags:
                 return None
-            problem = problem["problem"]
-            assert isinstance(problem, Problem)
+            problem_with_tags = problem_with_tags.problem
 
             stmt = select(GuildForumChannel).where(
                 GuildForumChannel.guild_id == guild_id
@@ -138,7 +139,7 @@ class ProblemThreadsManager:
                 return None
 
             stmt = select(ProblemThreads).where(
-                ProblemThreads.problem_db_id == problem.id,
+                ProblemThreads.problem_db_id == problem_with_tags.id,
                 ProblemThreads.forum_channel_db_id == forum_channel.id,
             )
             problem_thread = db.execute(stmt).scalars().first()
@@ -177,14 +178,17 @@ class ProblemThreadsManager:
         forum_channel = await self.get_forum_channel(guild_id)
         if not forum_channel:
             raise ForumChannelNotFound(f"Forum channel for guild {guild_id} not found.")
-        problem = await self.leetcode_problem_manager.get_problem_with_frontend_id(
-            problem_frontend_id
+        problem_with_tags = (
+            await self.leetcode_problem_manager.get_problem_with_frontend_id(
+                problem_frontend_id
+            )
         )
-        if not problem:
+        if not problem_with_tags:
             return None
-        problem = problem["problem"]
-        self.logger.debug(f"Fetched problem from LeetCodeProblemManager: {problem}")
-        assert isinstance(problem, Problem)
+        problem = problem_with_tags.problem
+        self.logger.debug(
+            f"Fetched problem from LeetCodeProblemManager: {problem_with_tags}"
+        )
         problem_thread = ProblemThreads(
             thread_id=thread_id,
             problem_db_id=problem.id,
@@ -284,7 +288,7 @@ class ProblemThreadsManager:
 
     async def reopen_or_create_problem_thread(
         self,
-        problem: Dict[Literal["problem", "tags"], Problem | Set[TopicTags]],
+        problem_with_tags: ProblemWithTags,
         guild: Guild,
         bot: commands.Bot,
         is_daily: bool,
@@ -298,9 +302,8 @@ class ProblemThreadsManager:
         Returns: A tuple containing the thread and a ThreadCreationEnum indicating whether the thread was created or reopened.
         """
 
-        problem_obj = problem["problem"]
-        assert isinstance(problem_obj, Problem)
-        assert isinstance(problem["tags"], Set)
+        problem_obj = problem_with_tags.problem
+
         channel = await self.get_forum_channel(guild_id=guild.id)
         self.logger.debug(f"Forum channel fetched: {channel}")
         if not channel:
@@ -330,7 +333,7 @@ class ProblemThreadsManager:
             thread = await self._create_thread(
                 channel=forum_channel,
                 problem=problem_obj,
-                problem_tags=problem["tags"],
+                problem_tags=problem_with_tags.tags,
                 bot=bot,
             )
             return thread, ThreadCreationEnum.CREATE
@@ -346,7 +349,7 @@ class ProblemThreadsManager:
             thread = await self._create_thread(
                 channel=forum_channel,
                 problem=problem_obj,
-                problem_tags=problem["tags"],
+                problem_tags=problem_with_tags.tags,
                 bot=bot,
             )
             self.logger.info(

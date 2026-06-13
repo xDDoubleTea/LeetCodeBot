@@ -1,5 +1,10 @@
+from dataclasses import dataclass
 from enum import Enum, IntEnum
 import discord
+from typing import Set, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from db.problem import Problem, TopicTags
 
 
 class ProblemDifficulity(Enum):
@@ -30,3 +35,9 @@ class ProblemDifficulity(Enum):
 class ThreadCreationEnum(IntEnum):
     REOPEN = 0
     CREATE = 1
+
+
+@dataclass
+class ProblemWithTags:
+    problem: "Problem"
+    tags: Set["TopicTags"]
