@@ -1,16 +1,30 @@
-from typing import Literal, Optional
+from typing import List, Literal, Optional
 
-from discord import Interaction, app_commands, Thread
-from discord.channel import ForumChannel
+from discord import (
+    Button,
+    DMChannel,
+    Embed,
+    Guild,
+    Interaction,
+    SelectOption,
+    app_commands,
+    Thread,
+)
+from discord.channel import ForumChannel, ThreadWithMessage
 from discord.ext import commands
 
-from config.constants import preview_len
+from config.constants import THEME_COLOR, preview_len
 from config.secrets import debug
+from db.problem import Problem
 from main import LeetCodeBot, logger
+from models.leetcode import ProblemWithTags, ThreadCreationEnum
+from models.pagination import ProblemTitlePaginationMetaData
+from utils import embed_utils
 from utils.embed_presenters import (
     get_user_info_embed,
 )
 from utils.handle_leetcode_interation import handle_leetcode_interaction
+from view.pagination_view import BasePaginationView, ProblemTitlePaginationView
 
 
 class LeetCode(commands.Cog):
@@ -41,7 +55,7 @@ class LeetCode(commands.Cog):
     @app_commands.command(name="daily", description="Get today's LeetCode problem")
     @app_commands.guild_only()
     @handle_leetcode_interaction(is_daily=True)
-    async def daily_problem(self, interaction: Interaction) -> dict | None:
+    async def daily_problem(self, interaction: Interaction) -> ProblemWithTags:
         assert interaction.guild
         logger.info(f"Fetching today's problem for guild {interaction.guild.id}")
         problem = await self.leetcode_problem_manager.get_daily_problem()
@@ -55,7 +69,9 @@ class LeetCode(commands.Cog):
     @app_commands.describe(id="The ID of the LeetCode problem")
     @app_commands.guild_only()
     @handle_leetcode_interaction(is_daily=False)
-    async def leetcode_problem(self, interaction: Interaction, id: int) -> dict | None:
+    async def leetcode_problem(
+        self, interaction: Interaction, id: int
+    ) -> ProblemWithTags:
         assert interaction.guild
         logger.info(f"Fetching problem with ID {id} for guild {interaction.guild.id}")
         problem = await self.leetcode_problem_manager.get_problem_with_frontend_id(id)
@@ -86,6 +102,127 @@ class LeetCode(commands.Cog):
         )
         logger.debug(f"Problem fetched: {problem}")
         return problem
+
+    def format_problem(
+        self, metadata: ProblemTitlePaginationMetaData, problems_list: List[Problem]
+    ) -> Embed:
+        embed = embed_utils.create_themed_embed(
+            title=f"Problem title matching '{metadata.search_regex}'",
+            description=f"Total problems found: {metadata.data_len}",
+            client=metadata.client,
+        )
+        for problem in problems_list:
+            embed.add_field(
+                name=f"{problem.problem_frontend_id}. {problem.title}",
+                value=problem.url,
+                inline=False,
+            )
+        return embed
+
+    def build_problem_options(
+        self, cur_page_problem: List[Problem]
+    ) -> List[SelectOption]:
+        return [
+            SelectOption(
+                label=f"{p.problem_frontend_id}. {p.title}"[:100],
+                value=str(p.problem_frontend_id),
+            )
+            for p in cur_page_problem
+        ]
+
+    async def handle_problem_select(
+        self, interaction: Interaction, view: BasePaginationView, values: List[str]
+    ):
+        problem_frontend_id = int(values[0])
+        problem_with_tags = (
+            await self.leetcode_problem_manager.get_problem_with_frontend_id(
+                problem_frontend_id=problem_frontend_id
+            )
+        )
+        assert interaction.guild
+        (
+            thread,
+            thread_creation_enum,
+        ) = await self.problem_threads_manager.reopen_or_create_problem_thread(
+            problem_with_tags=problem_with_tags,
+            guild=interaction.guild,
+            bot=self.bot,
+            is_daily=False,
+        )
+
+        msg = ""
+        if thread_creation_enum == ThreadCreationEnum.CREATE:
+            assert isinstance(thread, ThreadWithMessage)
+            msg = f"Created thread for problem {problem_with_tags.problem.problem_frontend_id} in {thread.thread.mention}"
+        else:
+            assert isinstance(thread, Thread)
+            msg = f"Thread for problem {problem_with_tags.problem.problem_frontend_id} already exists: {thread.mention}"
+            await thread.send(
+                f"Thread already exists {interaction.user.mention}",
+                delete_after=5,
+            )
+
+        await interaction.response.send_message(msg)
+
+    @app_commands.command(
+        name="problem-title", description="Get LeetCode Problem with problem title"
+    )
+    @app_commands.guild_only()
+    @app_commands.describe(
+        title="The title. Supports regex (google-re2), case insensitve."
+    )
+    async def problem_title(self, interaction: Interaction, title: str):
+        await interaction.response.defer(thinking=True)
+        try:
+            problems = await self.leetcode_problem_manager.get_problem_with_title_regex(
+                title
+            )
+            logger.debug(problems is None)
+            if problems is None:
+                await interaction.followup.send("No problem found!", ephemeral=True)
+                return
+            problems_list = list(problems)
+
+            guild = interaction.guild
+            assert isinstance(guild, Guild)
+            channel = interaction.channel
+            if not channel or isinstance(channel, DMChannel):
+                return await interaction.response.send_message(
+                    "This command can only be used in a server!", ephemeral=True
+                )
+
+            metadata = ProblemTitlePaginationMetaData(
+                guild_name=guild.name,
+                guild_id=guild.id,
+                channel_name=channel.name or "No name",
+                channel_id=channel.id,
+                user_name=interaction.user.name,
+                user_id=interaction.user.id,
+                client=interaction.client,
+                theme_color=THEME_COLOR,
+                search_regex=title,
+                data_len=len(problems_list),
+            )
+            view = ProblemTitlePaginationView(
+                metadata=metadata,
+                data=problems_list,
+                format_page=self.format_problem,
+                ephemeral=False,
+                select_options_builder=self.build_problem_options,
+                select_callback=self.handle_problem_select,
+                select_placeholder="Select a problem to open/create thread...",
+            )
+            logger.debug(view.select_callback)
+            logger.debug(view.select_options_builder)
+            logger.debug(view.select_menu)
+
+            await view.send_initial_message(interaction=interaction, followup=True)
+        except ValueError as e:
+            await interaction.followup.send(
+                "Something went wrong when compiling regex. Check syntax!",
+                ephemeral=True,
+            )
+            logger.debug(e)
 
     @app_commands.command(
         name="desc", description="Get LeetCode Problem description with problem ID"

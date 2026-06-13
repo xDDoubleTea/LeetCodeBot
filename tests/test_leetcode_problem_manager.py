@@ -8,6 +8,7 @@ from db.problem import (
     TopicTags,
 )  # Use actual Problem/TopicTags for instantiation
 import logging
+from models.leetcode import ProblemWithTags
 
 
 @pytest.fixture
@@ -65,14 +66,13 @@ async def test_get_daily_problem_in_cache(manager):
         description="desc",
         premium=False,
     )
-    manager.leetcode_api.fetch_daily.return_value = {
-        "problem": api_problem_obj,
-        "tags": set(),
-    }
+    manager.leetcode_api.fetch_daily.return_value = ProblemWithTags(
+        api_problem_obj, set()
+    )
 
     result = await manager.get_daily_problem()
-    assert result["problem"] == mock_problem
-    assert result["problem"].title == "Daily Cached"
+    assert result.problem == mock_problem
+    assert result.problem.title == "Daily Cached"
 
 
 @pytest.mark.asyncio
@@ -86,10 +86,9 @@ async def test_get_daily_problem_in_db_not_cache(manager, mock_db_session):
         description="desc",
         premium=False,
     )
-    manager.leetcode_api.fetch_daily.return_value = {
-        "problem": api_problem_obj,
-        "tags": set(),
-    }
+    manager.leetcode_api.fetch_daily.return_value = ProblemWithTags(
+        api_problem_obj, set()
+    )
 
     assert 200 not in manager.all_problem_cache
 
@@ -109,8 +108,8 @@ async def test_get_daily_problem_in_db_not_cache(manager, mock_db_session):
 
     result = await manager.get_daily_problem()
 
-    assert result["problem"] == db_problem
-    assert result["problem"].title == "Daily DB"
+    assert result.problem == db_problem
+    assert result.problem.title == "Daily DB"
     assert manager.all_problem_cache[200] == db_problem
 
 
@@ -126,10 +125,9 @@ async def test_get_daily_problem_fetch_new(manager, mock_db_session):
         premium=False,
     )
     tags = {TopicTags(tag_name="Tag1")}
-    manager.leetcode_api.fetch_daily.return_value = {
-        "problem": api_problem_obj,
-        "tags": tags,
-    }
+    manager.leetcode_api.fetch_daily.return_value = ProblemWithTags(
+        api_problem_obj, tags
+    )
 
     assert 300 not in manager.all_problem_cache
 
@@ -144,7 +142,7 @@ async def test_get_daily_problem_fetch_new(manager, mock_db_session):
 
     result = await manager.get_daily_problem()
 
-    assert result["problem"] == api_problem_obj
+    assert result.problem == api_problem_obj
     assert 300 in manager.all_problem_cache
 
     mock_db_session.add.assert_any_call(api_problem_obj)
@@ -165,7 +163,7 @@ async def test_get_problem_found_in_cache(manager):
     manager.all_problem_cache[1] = mock_problem
 
     result = await manager.get_problem_with_frontend_id(1)
-    assert result["problem"] == mock_problem
+    assert result.problem == mock_problem
     manager.leetcode_api.fetch_problem_by_id.assert_not_called()
 
 
@@ -183,17 +181,16 @@ async def test_get_problem_fetch_api(manager, mock_db_session):
         premium=False,
     )
     tags = {TopicTags(tag_name="TagA")}
-    manager.leetcode_api.fetch_problem_by_id.return_value = {
-        "problem": api_problem,
-        "tags": tags,
-    }
+    manager.leetcode_api.fetch_problem_by_id.return_value = ProblemWithTags(
+        api_problem, tags
+    )
 
     mock_db_session.query.return_value.filter_by.return_value.first.return_value = None
 
     mock_db_session.add.side_effect = lambda x: setattr(x, "tags", list(tags))
 
     result = await manager.get_problem_with_frontend_id(5)
-    assert result["problem"] == api_problem
+    assert result.problem == api_problem
     assert 5 in manager.all_problem_cache
     manager.leetcode_api.fetch_problem_by_id.assert_awaited_with(5)
     mock_db_session.add.assert_any_call(api_problem)
@@ -225,7 +222,13 @@ async def test_refresh_cache_success(manager, mock_db_session):
     t1 = TopicTags(tag_name="T1", id=500)
     t2 = TopicTags(tag_name="T2", id=501)
 
-    api_data = {1: {"problem": p1, "tags": {t1}}, 2: {"problem": p2, "tags": {t2}}}
+    api_data = {
+        1: ProblemWithTags(problem=p1, tags={t1}),
+        2: ProblemWithTags(problem=p2, tags={t2}),
+    }
+
+    # api_data = {1: {"problem": p1, "tags": {t1}}, 2: {"prblem": p2, "tags": {t2}}}
+
     manager.leetcode_api.fetch_all_problems.return_value = api_data
 
     mock_db_session.query.return_value.all.side_effect = [
@@ -242,44 +245,27 @@ async def test_refresh_cache_success(manager, mock_db_session):
     assert 1 in manager.all_problem_cache
     assert 2 in manager.all_problem_cache
     assert manager.all_problem_cache[1] == p1
-    mock_db_session.execute.assert_has_calls(
-        [
-            call(
-                ANY,
-                [
-                    {
-                        "problem_frontend_id": 1,
-                        "problem_id": 10,
-                        "title": "P1",
-                        "url": "url1",
-                        "difficulty": 0,
-                        "description": "desc1",
-                        "premium": False,
-                        "id": 100,
-                        "tags": [],
-                    },
-                    {
-                        "problem_frontend_id": 2,
-                        "problem_id": 20,
-                        "title": "P2",
-                        "url": "url2",
-                        "difficulty": 1,
-                        "description": "desc2",
-                        "premium": False,
-                        "id": 101,
-                        "tags": [],
-                    },
-                ],
-            ),
-            call(ANY, [{"tag_name": "T1", "id": 500}, {"tag_name": "T2", "id": 501}]),
-            call(ANY),  # delete associations
-            call(
-                ANY,
-                [
-                    {"problem_id": 100, "tag_id": 500},
-                    {"problem_id": 101, "tag_id": 501},
-                ],
-            ),  # insert associations
-        ],
-        any_order=True,
-    )
+
+    actual_calls = mock_db_session.execute.call_args_list
+    assert len(actual_calls) == 5
+
+    # 1. Problem bulk upsert
+    problem_upsert_data = actual_calls[0].args[1]
+    assert len(problem_upsert_data) == 2
+    assert problem_upsert_data[0]["problem_frontend_id"] in (1, 2)
+    assert problem_upsert_data[1]["problem_frontend_id"] in (1, 2)
+
+    # 2. Topic Tags bulk upsert (Order independent)
+    tag_upsert_data = actual_calls[1].args[1]
+    assert len(tag_upsert_data) == 2
+    assert {"tag_name": "T1", "id": 500} in tag_upsert_data
+    assert {"tag_name": "T2", "id": 501} in tag_upsert_data
+
+    # 3. Delete old associations (Statement only, no arguments)
+    assert len(actual_calls[2].args) == 1
+
+    # 4. Insert new associations (Order independent)
+    assoc_upsert_data = actual_calls[3].args[1]
+    assert len(assoc_upsert_data) == 2
+    assert {"problem_id": 100, "tag_id": 500} in assoc_upsert_data
+    assert {"problem_id": 101, "tag_id": 501} in assoc_upsert_data

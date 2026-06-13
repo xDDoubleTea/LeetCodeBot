@@ -63,8 +63,8 @@ async def test_fetch_daily_success(mock_topic_tags_cls, mock_problem_cls, leetco
 
         result = await leetcode_api.fetch_daily()
 
-        problem = result["problem"]
-        tags = result["tags"]
+        problem = result.problem
+        tags = result.tags
 
         assert problem == mock_problem_instance
         assert problem.title == "Test Problem"
@@ -120,7 +120,7 @@ async def test_fetch_problem_by_id_success(
 
         result = await leetcode_api.fetch_problem_by_id(1)
 
-        problem = result["problem"]
+        problem = result.problem
         assert problem == mock_problem_instance
         assert problem.title == "Two Sum"
         assert problem.problem_frontend_id == 1
@@ -189,8 +189,8 @@ async def test_fetch_all_problems_success(
         assert len(result) == 2
         assert 1 in result
         assert 2 in result
-        assert result[1]["problem"].title == "Problem 1"
-        assert result[2]["problem"].difficulty == ProblemDifficulity.MEDIUM.db_repr
+        assert result[1].problem.title == "Problem 1"
+        assert result[2].problem.difficulty == ProblemDifficulity.MEDIUM.db_repr
 
 
 @pytest.mark.asyncio

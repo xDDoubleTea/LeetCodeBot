@@ -4,7 +4,6 @@ from discord.channel import ThreadWithMessage
 from models.leetcode import ThreadCreationEnum
 from utils.custom_exceptions import ForumChannelNotFound
 from core.leetcode_api import FetchError
-from db.problem import Problem
 from main import logger
 
 
@@ -25,9 +24,9 @@ def handle_leetcode_interaction(is_daily: bool = False):
             try:
                 assert interaction.guild
 
-                problem = await func(self, interaction, *args, **kwargs)
+                problem_with_tags = await func(self, interaction, *args, **kwargs)
 
-                if not problem:
+                if not problem_with_tags:
                     if is_daily:
                         await interaction.followup.send(
                             "Daily problem not found. Check the leetcode api by /check_leetcode_api."
@@ -47,14 +46,13 @@ def handle_leetcode_interaction(is_daily: bool = False):
                     thread,
                     thread_creation_enum,
                 ) = await self.problem_threads_manager.reopen_or_create_problem_thread(
-                    problem=problem,
+                    problem_with_tags=problem_with_tags,
                     guild=interaction.guild,
                     bot=self.bot,
                     is_daily=is_daily,
                 )
 
-                problem_obj = problem["problem"]
-                assert isinstance(problem_obj, Problem)
+                problem_obj = problem_with_tags.problem
 
                 if is_daily:
                     if thread_creation_enum == ThreadCreationEnum.CREATE:

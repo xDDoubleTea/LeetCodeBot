@@ -1,12 +1,12 @@
 import re
-from typing import Dict, List, Set, Literal, Any
+from typing import Dict, List, Set
 
 import aiohttp
 from bs4 import BeautifulSoup
 
 from config.constants import preview_len
 from db.problem import Problem, TopicTags
-from models.leetcode import ProblemDifficulity
+from models.leetcode import ProblemDifficulity, ProblemWithTags
 import logging
 
 
@@ -58,7 +58,7 @@ class LeetCodeAPI:
 
     async def parse_daily_problem_response(
         self, response_json: dict
-    ) -> Dict[Literal["problem", "tags"], Problem | Set[TopicTags]]:
+    ) -> ProblemWithTags:
         self.logger.info("Parsing daily problem response")
         self.logger.debug("Daily Problem Response: %s", response_json)
         response_url = response_json.get("link", "")
@@ -85,13 +85,13 @@ class LeetCodeAPI:
                 tag_obj = TopicTags(tag_name=tag.get("name", ""))
                 tags.add(tag_obj)
             self.logger.debug("Parsed Daily Problem Tags: %s", tags)
-            return {"problem": problem, "tags": tags}
+            return ProblemWithTags(problem, tags)
         except ValueError:
             raise Exception("Invalid difficulty value")
 
     async def parse_single_problem_response(
         self, response_json: dict
-    ) -> Dict[Literal["problem", "tags"], Problem | Set[TopicTags]]:
+    ) -> ProblemWithTags:
         """
         Parses the problem response from the LeetCode API and returns a Problem object.
         Not that Expensive, but don't use it too often, especially in loops.
@@ -117,7 +117,7 @@ class LeetCodeAPI:
                 tag_obj = TopicTags(tag_name=tag.get("name", ""))
                 tags.add(tag_obj)
             self.logger.debug("Parsed Single Problem Tags: %s", tags)
-            return {"problem": problem, "tags": tags}
+            return ProblemWithTags(problem, tags)
         except ValueError:
             raise Exception("Invalid difficulty value")
         except Exception as e:
@@ -126,15 +126,13 @@ class LeetCodeAPI:
 
     async def parse_all_problem_response(
         self, response_json: dict
-    ) -> Dict[int, Dict[Literal["problem", "tags"], Problem | Set[TopicTags]]]:
+    ) -> Dict[int, ProblemWithTags]:
         """
         Parses the problem response from the LeetCode API and returns a mapping of problem IDs to a dictionary.
         The dictionary contains the Problem object and its set of TopicTags, with key being the problem_id.
         Very Expensive!
         """
-        result: Dict[
-            int, Dict[Literal["problem", "tags"], Problem | Set[TopicTags]]
-        ] = {}
+        result: Dict[int, ProblemWithTags] = {}
         tags: Set[TopicTags] = set()
         # self.logger.debug("All Problems Response: %s", response_json)
         self.logger.info("Parsing all problem responses")
@@ -168,11 +166,7 @@ class LeetCodeAPI:
                     tag_obj = TopicTags(tag_name=tag.get("name", ""))
                     tags.add(tag_obj)
                     cur_tags.add(tag_obj)
-                result[problem.problem_frontend_id] = {
-                    "problem": problem,
-                    "tags": cur_tags,
-                }
-
+                result[problem.problem_frontend_id] = ProblemWithTags(problem, cur_tags)
             except ValueError:
                 self.logger.error(
                     "Invalid difficulty value for problem ID %s",
@@ -203,7 +197,7 @@ class LeetCodeAPI:
 
     async def fetch_all_problems(
         self,
-    ) -> Dict[int, Dict[Literal["problem", "tags"], Any]]:
+    ) -> Dict[int, ProblemWithTags]:
         self.logger.info("Fetching all problems from GitHub")
         async with aiohttp.ClientSession() as session:
             async with session.get(
@@ -216,9 +210,7 @@ class LeetCodeAPI:
                 self.logger.debug("All Problems JSON: %s", validated_response_json)
                 return await self.parse_all_problem_response(validated_response_json)
 
-    async def fetch_problem_by_id(
-        self, id: int
-    ) -> Dict[Literal["problem", "tags"], Problem | Set[TopicTags]]:
+    async def fetch_problem_by_id(self, id: int) -> ProblemWithTags:
         self.logger.info(f"Fetching problem with ID {id}")
         async with aiohttp.ClientSession() as session:
             async with session.get(url=f"{self._base_url}/problem/{id}") as response:
@@ -231,9 +223,7 @@ class LeetCodeAPI:
                 )
                 return await self.parse_single_problem_response(validated_response_json)
 
-    async def fetch_problem_by_slug(
-        self, slug: str
-    ) -> Dict[Literal["problem", "tags"], Problem | Set[TopicTags]]:
+    async def fetch_problem_by_slug(self, slug: str) -> ProblemWithTags:
         self.logger.info(f"Fetching problem with slug {slug}")
         async with aiohttp.ClientSession() as session:
             async with session.get(url=f"{self._base_url}/problem/{slug}") as response:
@@ -248,7 +238,7 @@ class LeetCodeAPI:
 
     async def fetch_daily(
         self,
-    ) -> Dict[Literal["problem", "tags"], Problem | Set[TopicTags]]:
+    ) -> ProblemWithTags:
         self.logger.info("Fetching daily problem")
         async with aiohttp.ClientSession() as session:
             async with session.get(url=f"{self._base_url}/daily") as response:
