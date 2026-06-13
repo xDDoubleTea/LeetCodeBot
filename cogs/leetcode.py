@@ -17,7 +17,7 @@ from config.constants import THEME_COLOR, preview_len
 from config.secrets import debug
 from db.problem import Problem
 from main import LeetCodeBot, logger
-from models.leetcode import ProblemWithTags, ThreadCreationEnum
+from models.leetcode import ProblemDifficulity, ProblemWithTags, ThreadCreationEnum
 from models.pagination import ProblemTitlePaginationMetaData
 from utils import embed_utils
 from utils.embed_presenters import (
@@ -113,7 +113,7 @@ class LeetCode(commands.Cog):
         )
         for problem in problems_list:
             embed.add_field(
-                name=f"{problem.problem_frontend_id}. {problem.title}",
+                name=f"{problem.problem_frontend_id}. {problem.title} [{ProblemDifficulity(problem.difficulty).name}]",
                 value=problem.url,
                 inline=False,
             )
