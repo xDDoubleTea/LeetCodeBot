@@ -1,14 +1,19 @@
+import logging
+
+import discord
 from discord import TextChannel
 from discord.ext import commands
-import discord
-from discord.ext.commands import Context, Cog, ExtensionNotFound
+from discord.ext.commands import Cog, Context, ExtensionNotFound
 from discord.ext.commands.core import ExtensionFailed
 from discord.ext.commands.errors import (
+    CommandError,
     ExtensionAlreadyLoaded,
     ExtensionNotLoaded,
-    CommandError,
 )
-from utils.checks import is_me_command, IsNotDev
+
+from utils.checks import IsNotDev, is_me_command
+
+logger = logging.getLogger(__name__)
 
 
 class admin(Cog):

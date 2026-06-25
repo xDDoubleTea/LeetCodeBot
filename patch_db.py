@@ -1,4 +1,9 @@
+import logging
+
+logger = logging.getLogger(__name__)
+
 from sqlalchemy import create_engine, text
+
 from config.secrets import DATABASE_URL
 
 engine = create_engine(DATABASE_URL)

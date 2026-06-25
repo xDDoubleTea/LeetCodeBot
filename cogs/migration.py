@@ -1,11 +1,15 @@
-from discord.ext import commands
+import logging
+import re
+from typing import Dict
+
 import discord
 from discord import ForumChannel, app_commands
-import re
+from discord.ext import commands
+
 from db.problem_threads import ProblemThreads
 from main import LeetCodeBot
-from typing import Dict
-from main import logger
+
+logger = logging.getLogger(__name__)
 
 
 class Migration(commands.Cog):

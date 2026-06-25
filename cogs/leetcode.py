@@ -1,14 +1,14 @@
+import logging
 from typing import List, Literal, Optional
 
 from discord import (
-    Button,
     DMChannel,
     Embed,
     Guild,
     Interaction,
     SelectOption,
-    app_commands,
     Thread,
+    app_commands,
 )
 from discord.channel import ForumChannel, ThreadWithMessage
 from discord.ext import commands
@@ -16,9 +16,8 @@ from discord.ext import commands
 from config.constants import THEME_COLOR, preview_len
 from config.secrets import debug
 from db.problem import Problem
-from main import LeetCodeBot, logger
+from main import LeetCodeBot
 from models.leetcode import ProblemDifficulity, ProblemWithTags, ThreadCreationEnum
-
 from models.pagination import ProblemTitlePaginationMetaData
 from utils import embed_utils
 from utils.embed_presenters import (
@@ -26,6 +25,8 @@ from utils.embed_presenters import (
 )
 from utils.handle_leetcode_interation import handle_leetcode_interaction
 from view.pagination_view import BasePaginationView, ProblemTitlePaginationView
+
+logger = logging.getLogger(__name__)
 
 
 class LeetCode(commands.Cog):

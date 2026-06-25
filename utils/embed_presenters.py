@@ -1,11 +1,15 @@
-from discord import Client, Embed
+import logging
 from typing import Set
-from discord.ext import commands
-from utils.embed_utils import create_themed_embed
-from models.leetcode import ProblemDifficulity
+
 import discord
+from discord import Client, Embed
+from discord.ext import commands
+
 from db.problem import Problem, TopicTags
-# from main import logger
+from models.leetcode import ProblemDifficulity
+from utils.embed_utils import create_themed_embed
+
+logger = logging.getLogger(__name__)
 
 
 def get_difficulty_str_repr(difficulty_db_repr: int) -> str:

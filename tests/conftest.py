@@ -1,8 +1,8 @@
-import pytest
 from unittest.mock import MagicMock
-import logging
+
+import pytest
+
 from db.base import Base
-from db import problem  # Ensure models are loaded for SQLAlchemy's registry
 
 
 @pytest.fixture(scope="session", autouse=True)

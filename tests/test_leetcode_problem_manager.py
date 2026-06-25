@@ -1,13 +1,15 @@
+import logging
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
-from unittest.mock import MagicMock, AsyncMock, call, ANY
-from core.leetcode_problem import LeetCodeProblemManager, ProblemNotFound
+
 from core.leetcode_api import LeetCodeAPI
+from core.leetcode_problem import LeetCodeProblemManager
 from db.database_manager import DatabaseManager
 from db.problem import (
     Problem,
     TopicTags,
 )  # Use actual Problem/TopicTags for instantiation
-import logging
 from models.leetcode import ProblemWithTags
 
 
