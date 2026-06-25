@@ -1,0 +1,29 @@
+# Version control
+.git
+.gitignore
+
+# Local development and environments
+.venv/
+.uv/
+
+# Python cache and compiled files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Testing
+.pytest_cache/
+tests/
+pytest.ini
+
+# Documentation and Repo Assets
+docs/
+classes.mmd
+CODE_OF_CONDUCT.md
+CONTRIBUTING.md
+README.md
+projtree.txt
+
+# (Optional) Ignore assets if the bot doesn't use them at runtime
+# assets/
