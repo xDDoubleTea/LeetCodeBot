@@ -1,0 +1,11 @@
+services:
+  leetcode-bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: leetcode-discord-bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./db:/app/db
