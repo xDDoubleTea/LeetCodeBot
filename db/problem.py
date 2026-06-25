@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.schema import Column, ForeignKey, Table
+
 from db.base import Base
 
 problem_tags_association = Table(

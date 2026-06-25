@@ -1,8 +1,13 @@
-from typing import Union
-from discord import Embed, Client
-import datetime
 import calendar
-from config.constants import THEME_COLOR, DEV_ID, default_footer
+import datetime
+import logging
+from typing import Union
+
+from discord import Client, Embed
+
+from config.constants import DEV_ID, THEME_COLOR, default_footer
+
+logger = logging.getLogger(__name__)
 
 
 def create_themed_embed(

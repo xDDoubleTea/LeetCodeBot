@@ -1,10 +1,15 @@
 import functools
+import logging
+
 from discord import Interaction, Thread
 from discord.channel import ThreadWithMessage
-from models.leetcode import ThreadCreationEnum
-from utils.custom_exceptions import ForumChannelNotFound
+
 from core.leetcode_api import FetchError
 from main import logger
+from models.leetcode import ThreadCreationEnum
+from utils.custom_exceptions import ForumChannelNotFound
+
+logger = logging.getLogger(__name__)
 
 
 def handle_leetcode_interaction(is_daily: bool = False):

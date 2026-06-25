@@ -1,10 +1,14 @@
+import logging
 from typing import Any, Optional
+
 import discord
-from discord import Guild, Member, Role, PartialMessage, Message, TextChannel
+from discord import Guild, Member, Message, PartialMessage, Role, TextChannel
 from discord.abc import GuildChannel
+from discord.channel import DMChannel
 from discord.ext.commands import Bot
-from discord.guild import DMChannel
 from discord.user import User
+
+logger = logging.getLogger(__name__)
 
 
 async def get_or_fetch(

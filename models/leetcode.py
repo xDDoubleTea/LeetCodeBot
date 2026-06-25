@@ -1,8 +1,11 @@
+import logging
 from dataclasses import dataclass
 from enum import Enum, IntEnum
-import discord
-from typing import Set, TYPE_CHECKING
+from typing import TYPE_CHECKING, Set
 
+import discord
+
+logger = logging.getLogger(__name__)
 if TYPE_CHECKING:
     from db.problem import Problem, TopicTags
 

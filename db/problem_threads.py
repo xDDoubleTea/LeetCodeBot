@@ -1,7 +1,8 @@
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
-from db.problem import Problem
+
 from db.base import Base
+from db.problem import Problem
 from db.thread_channel import GuildForumChannel
 
 
