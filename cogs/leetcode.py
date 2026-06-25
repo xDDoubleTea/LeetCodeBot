@@ -115,7 +115,7 @@ class LeetCode(commands.Cog):
         )
         for problem in problems_list:
             embed.add_field(
-                name=f"{problem.problem_frontend_id}. {problem.title} [{ProblemDifficulity(problem.difficulty).name}]",
+                name=f"{problem.problem_frontend_id}. {problem.title} [{ProblemDifficulity.from_db_repr(problem.difficulty).value[1]}]",
                 value=problem.url,
                 inline=False,
             )
@@ -126,7 +126,9 @@ class LeetCode(commands.Cog):
     ) -> List[SelectOption]:
         return [
             SelectOption(
-                label=f"{p.problem_frontend_id}. {p.title}"[:100],
+                label=f"{p.problem_frontend_id}. {p.title} [{ProblemDifficulity.from_db_repr(p.difficulty).value[1]}]"[
+                    :100
+                ],
                 value=str(p.problem_frontend_id),
             )
             for p in cur_page_problem
