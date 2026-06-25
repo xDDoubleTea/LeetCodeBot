@@ -1,14 +1,18 @@
-from discord.ext import commands
+import logging
+
 import discord
 from discord import app_commands
+from discord.ext import commands
+
 from main import LeetCodeBot
+
+logger = logging.getLogger(__name__)
 
 
 class HelpCog(commands.Cog):
     def __init__(self, bot: LeetCodeBot):
         self.bot = bot
         self.database_manager = bot.database_manager
-        self.logger = bot.logger
 
     def help_embed(self) -> discord.Embed:
         embed = discord.Embed(

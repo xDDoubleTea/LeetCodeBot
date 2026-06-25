@@ -1,8 +1,9 @@
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import MagicMock, AsyncMock, patch
-from core.leetcode_api import LeetCodeAPI, FetchError
+
+from core.leetcode_api import FetchError, LeetCodeAPI
 from models.leetcode import ProblemDifficulity
-import logging
 
 # We will patch db.problem.Problem and db.problem.TopicTags
 # when these are imported into core/leetcode_api.py and core/leetcode_problem.py.

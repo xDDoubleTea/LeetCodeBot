@@ -1,14 +1,14 @@
+import logging
 from typing import List, Literal, Optional
 
 from discord import (
-    Button,
     DMChannel,
     Embed,
     Guild,
     Interaction,
     SelectOption,
-    app_commands,
     Thread,
+    app_commands,
 )
 from discord.channel import ForumChannel, ThreadWithMessage
 from discord.ext import commands
@@ -16,7 +16,7 @@ from discord.ext import commands
 from config.constants import THEME_COLOR, preview_len
 from config.secrets import debug
 from db.problem import Problem
-from main import LeetCodeBot, logger
+from main import LeetCodeBot
 from models.leetcode import ProblemDifficulity, ProblemWithTags, ThreadCreationEnum
 
 from models.pagination import ProblemTitlePaginationMetaData
@@ -26,6 +26,8 @@ from utils.embed_presenters import (
 )
 from utils.handle_leetcode_interation import handle_leetcode_interaction
 from view.pagination_view import BasePaginationView, ProblemTitlePaginationView
+
+logger = logging.getLogger(__name__)
 
 
 class LeetCode(commands.Cog):
@@ -114,7 +116,7 @@ class LeetCode(commands.Cog):
         )
         for problem in problems_list:
             embed.add_field(
-                name=f"{problem.problem_frontend_id}. {problem.title} [{ProblemDifficulity(problem.difficulty).name}]",
+                name=f"{problem.problem_frontend_id}. {problem.title} [{ProblemDifficulity.from_db_repr(problem.difficulty).value[1]}]",
                 value=problem.url,
                 inline=False,
             )
@@ -125,7 +127,9 @@ class LeetCode(commands.Cog):
     ) -> List[SelectOption]:
         return [
             SelectOption(
-                label=f"{p.problem_frontend_id}. {p.title}"[:100],
+                label=f"{p.problem_frontend_id}. {p.title} [{ProblemDifficulity.from_db_repr(p.difficulty).value[1]}]"[
+                    :100
+                ],
                 value=str(p.problem_frontend_id),
             )
             for p in cur_page_problem

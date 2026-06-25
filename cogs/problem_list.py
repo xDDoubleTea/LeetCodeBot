@@ -1,8 +1,11 @@
+import logging
+
 from discord import Interaction, app_commands
-from discord.app_commands.models import app_command_option_factory
 from discord.ext.commands import Cog
 
-from main import LeetCodeBot, logger
+from main import LeetCodeBot
+
+logger = logging.getLogger(__name__)
 
 
 class ProblemListCog(Cog):

@@ -1,10 +1,13 @@
-from enum import IntEnum
+import logging
 from dataclasses import dataclass
-from discord import Client, Color
-from typing import Optional, TYPE_CHECKING
+from enum import IntEnum
+from typing import TYPE_CHECKING, Optional
 
+from discord import Client, Color
+
+logger = logging.getLogger(__name__)
 if TYPE_CHECKING:
-    from db.problem import Problem
+    pass
 
 
 class PaginationViewButtonLayouts(IntEnum):

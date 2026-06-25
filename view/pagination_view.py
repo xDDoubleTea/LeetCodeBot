@@ -1,7 +1,9 @@
+import logging
+from typing import Any, Awaitable, Callable, Generic, List, Optional, TypeVar
+
 import discord
-from discord import Message, Interaction, Embed, SelectOption
-from discord.ui import Button, View, button, Select
-from typing import Any, Callable, Generic, Optional, List, TypeVar, Awaitable
+from discord import Embed, Interaction, Message, SelectOption
+from discord.ui import Button, Select, View, button
 
 from models.pagination import (
     BasePaginationMetaData,
@@ -9,6 +11,7 @@ from models.pagination import (
     ProblemTitlePaginationMetaData,
 )
 
+logger = logging.getLogger(__name__)
 T_meta = TypeVar("T_meta", bound=BasePaginationMetaData)
 
 

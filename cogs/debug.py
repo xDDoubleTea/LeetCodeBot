@@ -1,11 +1,14 @@
-from discord.ext import commands
+import logging
+
 import discord
 from discord import app_commands
-from utils.checks import is_me_app_command
-from main import LeetCodeBot
-from db.problem import Problem
+from discord.ext import commands
 
-from main import logger
+from db.problem import Problem
+from main import LeetCodeBot
+from utils.checks import is_me_app_command
+
+logger = logging.getLogger(__name__)
 
 
 class Debug(commands.Cog):
@@ -56,8 +59,8 @@ class Debug(commands.Cog):
                     f"Problem with ID {problem_id} not found.", ephemeral=True
                 )
                 return
-            problem = problem_data["problem"]
-            tags = problem_data["tags"]
+            problem = problem_data.problem
+            tags = problem_data.tags
             assert isinstance(tags, set) and isinstance(problem, Problem)
             await interaction.followup.send(
                 f"Fetched Problem ID: {problem.problem_id}, Title: {problem.title}, Tags: {[tag.tag_name for tag in tags]}",
