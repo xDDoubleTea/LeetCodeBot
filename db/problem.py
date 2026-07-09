@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.schema import Column, ForeignKey, Table
+
 from db.base import Base
 
 problem_tags_association = Table(
@@ -27,6 +28,7 @@ class Problem(Base):
         back_populates="problems",
         cascade="all, delete",
     )
+    premium: Mapped[bool] = mapped_column(nullable=False, default=False)
 
     def to_dict(self) -> dict:
         return {
@@ -38,10 +40,11 @@ class Problem(Base):
             "difficulty": self.difficulty,
             "description": self.description,
             "tags": [tag.to_dict() for tag in self.tags],
+            "premium": self.premium,
         }
 
     def __repr__(self) -> str:
-        return f"Problem(id={self.id}, title={self.title}, problem_id={self.problem_id}, problem_frontend_id={self.problem_frontend_id}, url={self.url}, difficulty={self.difficulty})"
+        return f"Problem(id={self.id}, title={self.title}, problem_id={self.problem_id}, problem_frontend_id={self.problem_frontend_id}, url={self.url}, difficulty={self.difficulty}, premium={self.premium})"
 
 
 class TopicTags(Base):

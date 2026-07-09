@@ -1,0 +1,105 @@
+import functools
+import logging
+
+from discord import Interaction, Thread
+from discord.channel import ThreadWithMessage
+
+from core.leetcode_api import FetchError
+from main import logger
+from models.leetcode import ThreadCreationEnum
+from utils.custom_exceptions import ForumChannelNotFound
+
+logger = logging.getLogger(__name__)
+
+
+def handle_leetcode_interaction(is_daily: bool = False):
+    """
+    Decorator to handle the common workflow for LeetCode problem commands:
+    1. Defer interaction.
+    2. Execute the decorated fetch function.
+    3. Handle errors (Not Found, FetchError, etc.).
+    4. Create/Reopen thread.
+    5. Send success response.
+    """
+
+    def decorator(func):
+        @functools.wraps(func)
+        async def wrapper(self, interaction: Interaction, *args, **kwargs):
+            await interaction.response.defer(thinking=True)
+            try:
+                assert interaction.guild
+
+                problem_with_tags = await func(self, interaction, *args, **kwargs)
+
+                if not problem_with_tags:
+                    if is_daily:
+                        await interaction.followup.send(
+                            "Daily problem not found. Check the leetcode api by /check_leetcode_api."
+                        )
+                    else:
+                        # Attempt to retrieve ID for a better error message if available
+                        problem_id = kwargs.get("id")
+                        if problem_id:
+                            await interaction.followup.send(
+                                f"Problem with ID {problem_id} not found."
+                            )
+                        else:
+                            await interaction.followup.send("Problem not found.")
+                    return
+
+                (
+                    thread,
+                    thread_creation_enum,
+                ) = await self.problem_threads_manager.reopen_or_create_problem_thread(
+                    problem_with_tags=problem_with_tags,
+                    guild=interaction.guild,
+                    bot=self.bot,
+                    is_daily=is_daily,
+                )
+
+                problem_obj = problem_with_tags.problem
+
+                if is_daily:
+                    if thread_creation_enum == ThreadCreationEnum.CREATE:
+                        assert isinstance(thread, ThreadWithMessage)
+                        msg = f"Created thread for today's problem in {thread.thread.mention}"
+                    else:
+                        assert isinstance(thread, Thread)
+                        msg = f"Thread for today's problem already exists: {thread.mention}"
+                        await thread.send(
+                            f"Thread already exists {interaction.user.mention}",
+                            delete_after=5,
+                        )
+                else:
+                    extra_info = ""
+                    difficulty = kwargs.get("difficulty")
+                    if difficulty:
+                        extra_info = f" with difficulty {difficulty}"
+
+                    if thread_creation_enum == ThreadCreationEnum.CREATE:
+                        assert isinstance(thread, ThreadWithMessage)
+                        msg = f"Created thread for problem {problem_obj.problem_frontend_id} in {thread.thread.mention}{extra_info}"
+                    else:
+                        assert isinstance(thread, Thread)
+                        msg = f"Thread for problem {problem_obj.problem_frontend_id} already exists: {thread.mention}"
+                        await thread.send(
+                            f"Thread already exists {interaction.user.mention}",
+                            delete_after=5,
+                        )
+
+                await interaction.followup.send(msg)
+
+            except ForumChannelNotFound as e:
+                await interaction.followup.send(f"{e}")
+            except FetchError as e:
+                logger.error("FetchError occurred", exc_info=e)
+                await interaction.followup.send(f"{e}")
+            except Exception as e:
+                logger.error("An error occurred", exc_info=e)
+                await interaction.followup.send(
+                    f"An error occurred while processing the request: {e}"
+                )
+
+        return wrapper
+
+    return decorator

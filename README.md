@@ -1,5 +1,23 @@
 # LeetCode Discord Bot
 
+## How to run this bot
+
+### Prerequisites
+
+Ensure [git](https://git-scm.com/install/), [uv](https://docs.astral.sh/uv/getting-started/installation/), [python](https://www.python.org/downloads/) are installed on your system.
+
+### Run these commands in your terminal
+
+```bash
+git clone https://github.com/xDDoubleTea/LeetCodeBot
+cd LeetCodeBot
+uv run main.py
+```
+
+### Visual studio code
+
+If you prefer GUI and you use vscode, you can use the built-in `Clone repository` function to clone this repository. Also make sure to run `uv sync` for code completions to work properly in vscode!!!
+
 ## Features
 
 - Discuss LeetCode problems with friends in your Discord server.

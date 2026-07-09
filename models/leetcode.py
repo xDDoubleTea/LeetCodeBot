@@ -1,5 +1,13 @@
-from enum import Enum
+import logging
+from dataclasses import dataclass
+from enum import Enum, IntEnum
+from typing import TYPE_CHECKING, Set
+
 import discord
+
+logger = logging.getLogger(__name__)
+if TYPE_CHECKING:
+    from db.problem import Problem, TopicTags
 
 
 class ProblemDifficulity(Enum):
@@ -25,3 +33,14 @@ class ProblemDifficulity(Enum):
             if difficulty.str_repr.lower() == str_repr.lower():
                 return difficulty
         raise ValueError(f"No matching difficulty for str_repr: {str_repr}")
+
+
+class ThreadCreationEnum(IntEnum):
+    REOPEN = 0
+    CREATE = 1
+
+
+@dataclass
+class ProblemWithTags:
+    problem: "Problem"
+    tags: Set["TopicTags"]
