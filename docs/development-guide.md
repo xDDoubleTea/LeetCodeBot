@@ -72,4 +72,4 @@ Chances are you are using VSCode as your IDE. After running `uv sync`, you can o
 
 ## Architecture Overview
 
-Please refer to the [Architecture Documentation](/docs/architecture/ARCHITECTURE.md).
+Please refer to the [Architecture Documentation](./architecture/ARCHITECTURE.md).

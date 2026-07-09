@@ -11,7 +11,7 @@
 
 ## LeetCode Commands
 
-For available commands, please refer to [README](../../README.md).
+For available commands, please refer to [README](https://github.com/xDDoubleTea/LeetCodeBot/blob/main/README.md).
 
 ### LeetCode Problem Thread Creation
 
@@ -132,5 +132,5 @@ Start([User invokes /daily]) --> FetchAPI[Fetch Daily Challenge from API]
 
 ## UML charts
 
-[UML packages chart](../../assets/packages.png)
-[UML classes chart](../../assets/classes.png)
+![UML packages chart](../assets/packages.png)
+![UML classes chart](../assets/classes.png)
