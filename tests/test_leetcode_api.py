@@ -1,5 +1,6 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import logging
 import pytest
 
 from core.leetcode_api import FetchError, LeetCodeAPI
@@ -16,7 +17,7 @@ from models.leetcode import ProblemDifficulity
 
 @pytest.fixture
 def leetcode_api(mock_logger):
-    return LeetCodeAPI(logger=mock_logger)
+    return LeetCodeAPI()
 
 
 def test_parse_problem_desc(leetcode_api):
