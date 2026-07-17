@@ -42,10 +42,3 @@ line-ending = "auto"
 # Source - https://stackoverflow.com/a/51633600
 # Posted by hoefling, modified by community. See post 'Timeline' for change history
 # Retrieved 2026-06-11, License - CC BY-SA 4.0
-
-[tool.pytest.ini_options]
-log_cli = true
-log_cli_level = "INFO"
-log_cli_format = "%(asctime)s [%(levelname)8s] %(message)s (%(filename)s:%(lineno)s)"
-log_cli_date_format = "%Y-%m-%d %H:%M:%S"
-

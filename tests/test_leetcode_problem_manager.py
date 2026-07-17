@@ -43,7 +43,7 @@ def mock_db_manager(mock_db_session):
 
 @pytest.fixture
 def manager(mock_api, mock_db_manager, mock_logger):
-    return LeetCodeProblemManager(mock_api, mock_db_manager, mock_logger)
+    return LeetCodeProblemManager(mock_api, mock_db_manager)
 
 
 @pytest.mark.asyncio
