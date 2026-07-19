@@ -1,9 +1,11 @@
 import logging
 from typing import Set
-
+import re
+from bs4 import BeautifulSoup
 import discord
 from discord import Client, Embed
 from discord.ext import commands
+from config.constants import PREVIEW_LEN
 
 from db.problem import Problem, TopicTags
 from models.leetcode import ProblemDifficulity
@@ -83,6 +85,31 @@ def get_embed_color(difficulty_db_repr: int) -> discord.Color:
 def get_problem_desc_picture(self, problem: Problem) -> str:
     # TODO: Returns the example pictures of the problems.
     return ""
+
+
+def parse_problem_desc(content: str) -> str:
+    """
+    Parses the problem description from the LeetCode API response.
+    """
+    logger.debug("Parsing problem description")
+    if not content:
+        return "No description available."
+    soup = BeautifulSoup(content, "html.parser")
+
+    for tag in soup.find_all("sup"):
+        tag.string = f"^{tag.get_text()}"
+    for tag in soup.find_all("code"):
+        tag.string = f"`{tag.get_text()}`"
+    for tag in soup.find_all("em"):
+        tag.string = f"*{tag.get_text()}*"
+    for tag in soup.find_all("strong"):
+        tag.string = f"**{tag.get_text()}**"
+
+    text_only = soup.get_text()
+    problem_md = re.sub(r"\n\s*\n", "\n\n", text_only.strip())
+    if len(text_only.strip()) > PREVIEW_LEN:
+        problem_md += "..."
+    return problem_md
 
 
 def get_problem_desc_embed(

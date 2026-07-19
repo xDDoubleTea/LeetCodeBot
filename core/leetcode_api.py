@@ -3,9 +3,7 @@ import re
 from typing import Dict, List, Set
 
 import aiohttp
-from bs4 import BeautifulSoup
 
-from config.constants import preview_len
 from db.problem import Problem, TopicTags
 from models.leetcode import ProblemDifficulity, ProblemWithTags
 
@@ -33,63 +31,6 @@ class LeetCodeAPI:
                 else:
                     return "LeetCode API is down."
 
-    def _parse_problem_desc(self, content: str) -> str:
-        """
-        Parses the problem description from the LeetCode API response.
-        """
-        logger.debug("Parsing problem description")
-        if not content:
-            return "No description available."
-        soup = BeautifulSoup(content, "html.parser")
-
-        for tag in soup.find_all("sup"):
-            tag.string = f"^{tag.get_text()}"
-        for tag in soup.find_all("code"):
-            tag.string = f"`{tag.get_text()}`"
-        for tag in soup.find_all("em"):
-            tag.string = f"*{tag.get_text()}*"
-        for tag in soup.find_all("strong"):
-            tag.string = f"**{tag.get_text()}**"
-
-        text_only = soup.get_text()
-        problem_md = re.sub(r"\n\s*\n", "\n\n", text_only.strip())[:preview_len]
-        if len(text_only.strip()) > preview_len:
-            problem_md += "..."
-        return problem_md
-
-    async def parse_daily_problem_response(
-        self, response_json: dict
-    ) -> ProblemWithTags:
-        logger.info("Parsing daily problem response")
-        logger.debug("Daily Problem Response: %s", response_json)
-        response_url = response_json.get("link", "")
-        response_problem = response_json.get("question", {})
-        logger.debug("Parsed Problem Data: %s", response_problem)
-        try:
-            problem = Problem(
-                title=response_problem.get("title", ""),
-                problem_id=response_problem.get("questionId", 0),
-                problem_frontend_id=response_problem.get("questionFrontendId", 0),
-                url=response_url,
-                difficulty=ProblemDifficulity.from_str_repr(
-                    response_problem.get("difficulty", "")
-                ).db_repr,
-                description=self._parse_problem_desc(
-                    response_problem.get("content", "")
-                ),
-                premium=response_problem.get("isPaidOnly", False),
-            )
-            logger.debug("Parsed Daily Problem: %s", problem)
-            problem_tags: List[dict] = response_problem.get("topicTags", [])
-            tags: Set[TopicTags] = set()
-            for tag in problem_tags:
-                tag_obj = TopicTags(tag_name=tag.get("name", ""))
-                tags.add(tag_obj)
-            logger.debug("Parsed Daily Problem Tags: %s", tags)
-            return ProblemWithTags(problem, tags)
-        except ValueError:
-            raise Exception("Invalid difficulty value")
-
     async def parse_single_problem_response(
         self, response_json: dict
     ) -> ProblemWithTags:
@@ -108,15 +49,14 @@ class LeetCodeAPI:
                 difficulty=ProblemDifficulity.from_str_repr(
                     response_json.get("difficulty", "")
                 ).db_repr,
-                description=self._parse_problem_desc(response_json.get("content", "")),
+                description=response_json.get("content", ""),
                 premium=response_json.get("isPaidOnly", False),
             )
             logger.debug("Parsed Single Problem: %s", problem)
             problem_tags: List[dict] = response_json.get("topicTags", [])
-            tags: Set[TopicTags] = set()
-            for tag in problem_tags:
-                tag_obj = TopicTags(tag_name=tag.get("name", ""))
-                tags.add(tag_obj)
+            tags: Set[TopicTags] = set(
+                TopicTags(tag_name=tag.get("name", "")) for tag in problem_tags
+            )
             logger.debug("Parsed Single Problem Tags: %s", tags)
             return ProblemWithTags(problem, tags)
         except ValueError:
@@ -124,6 +64,30 @@ class LeetCodeAPI:
         except Exception as e:
             logger.error("Error parsing single problem response: %s", e)
             raise Exception("Error parsing single problem response") from e
+
+    async def parse_daily_problem_response(
+        self, response_json: dict
+    ) -> ProblemWithTags:
+        logger.info("Parsing daily problem response")
+        logger.debug("Daily Problem Response: %s", response_json)
+        # The https://leetcode-api-pied.vercel.app returns different formats for daily problems and single problems, which is weird but we have to deal with it unless we interact directly with leetcode graphql API.
+        response_url = response_json.get("link", "")
+        response_problem = response_json.get("question", {})
+        try:
+            assert isinstance(response_problem, dict)
+            response_problem["url"] = response_url
+            logger.debug("Raw daily problem: %s", response_problem)
+            problem_with_tags = await self.parse_single_problem_response(
+                response_problem
+            )
+            logger.debug("Parsed Daily Problem: %s", problem_with_tags.problem)
+            logger.debug("Parsed Daily Problem Tags: %s", problem_with_tags.tags)
+            return problem_with_tags
+        except AssertionError:
+            raise Exception("Raw problem object is not a dictionary")
+        except Exception as e:
+            logger.error("Error parsing daily problem response: %s", e)
+            raise Exception("Error parsing daily problem response") from e
 
     async def parse_all_problem_response(
         self, response_json: dict
@@ -134,53 +98,34 @@ class LeetCodeAPI:
         Very Expensive!
         """
         result: Dict[int, ProblemWithTags] = {}
-        tags: Set[TopicTags] = set()
         # logger.debug("All Problems Response: %s", response_json)
         logger.info("Parsing all problem responses")
-        for item in response_json:
-            problem_data = item.get("data", {})
-            problem_data_question = problem_data.get("question", {})
-            if not problem_data or not problem_data_question:
-                continue
+        problem_data = [
+            item.get("data", {}) for item in response_json if isinstance(item, dict)
+        ]
+
+        for item in problem_data:
+            raw_problem_object = item.get("question", {})
             try:
-                problem = Problem(
-                    title=problem_data_question.get("title", ""),
-                    problem_id=int(problem_data_question.get("questionId", 0)),
-                    problem_frontend_id=int(
-                        problem_data_question.get("questionFrontendId", 0)
-                    ),
-                    url=problem_data_question.get("url", ""),
-                    difficulty=ProblemDifficulity.from_str_repr(
-                        problem_data_question.get("difficulty", "")
-                    ).db_repr,
-                    description=self._parse_problem_desc(
-                        problem_data_question.get("content", "")
-                    ),
-                    premium=problem_data_question.get("isPaidOnly", False),
+                assert isinstance(raw_problem_object, dict) and raw_problem_object
+                problem_with_tags = await self.parse_single_problem_response(
+                    response_json=raw_problem_object
                 )
-                if problem_data_question.get("isPaidOnly"):
-                    logger.debug(problem_data_question.get("isPaidOnly", False))
-                    logger.debug(f"Problem is paid only? {problem.premium}")
-                problem_tags: List[dict] = problem_data_question.get("topicTags", [])
-                cur_tags: Set[TopicTags] = set()
-                for tag in problem_tags:
-                    tag_obj = TopicTags(tag_name=tag.get("name", ""))
-                    tags.add(tag_obj)
-                    cur_tags.add(tag_obj)
-                result[problem.problem_frontend_id] = ProblemWithTags(problem, cur_tags)
-            except ValueError:
-                logger.error(
-                    "Invalid difficulty value for problem ID %s",
-                    problem_data_question.get("questionId", 0),
+                result[problem_with_tags.problem.problem_frontend_id] = (
+                    problem_with_tags
                 )
-                raise Exception("Invalid difficulty value")
+            except AssertionError as e:
+                raise Exception(
+                    "Raw problem object is not a dictionary or is empty"
+                ) from e
             except Exception as e:
                 logger.error(
                     "Error parsing problem ID %s: %s",
-                    problem_data_question.get("questionId", 0),
+                    raw_problem_object.get("questionId", 0),
                     e,
                 )
                 raise Exception("Error parsing all problem response") from e
+
         logger.debug("Parsed All Problems: %s", result)
         return result
 

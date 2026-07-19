@@ -5,6 +5,7 @@ import pytest
 
 from core.leetcode_api import FetchError, LeetCodeAPI
 from models.leetcode import ProblemDifficulity
+from utils.embed_presenters import parse_problem_desc
 
 # We will patch db.problem.Problem and db.problem.TopicTags
 # when these are imported into core/leetcode_api.py and core/leetcode_problem.py.
@@ -23,7 +24,7 @@ def leetcode_api(mock_logger):
 def test_parse_problem_desc(leetcode_api):
     html_content = "<p>Test <strong>Bold</strong> <em>Italic</em> <code>Code</code> <sup>Sup</sup></p>"
 
-    parsed = leetcode_api._parse_problem_desc(html_content)
+    parsed = parse_problem_desc(html_content)
     assert "**Bold**" in parsed
     assert "*Italic*" in parsed
     assert "`Code`" in parsed

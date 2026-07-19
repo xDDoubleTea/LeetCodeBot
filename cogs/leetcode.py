@@ -13,7 +13,7 @@ from discord import (
 from discord.channel import ForumChannel, ThreadWithMessage
 from discord.ext import commands
 
-from config.constants import THEME_COLOR, preview_len
+from config.constants import THEME_COLOR, PREVIEW_LEN
 from config.secrets import debug
 from db.problem import Problem
 from main import LeetCodeBot
@@ -53,7 +53,7 @@ class LeetCode(commands.Cog):
         """
         if not content:
             return "No description available."
-        return content[:preview_len] + ("..." if len(content) > preview_len else "")
+        return content[:PREVIEW_LEN] + ("..." if len(content) > PREVIEW_LEN else "")
 
     @app_commands.command(name="daily", description="Get today's LeetCode problem")
     @app_commands.guild_only()
