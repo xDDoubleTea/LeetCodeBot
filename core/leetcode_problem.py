@@ -162,10 +162,20 @@ class LeetCodeProblemManager:
             await self._create_problem_tag_associations(api_problems)
             problems = await self.get_problems_from_db()
             logger.info("Rebuilding problem cache...")
-            for problem in problems:
-                self.all_problem_cache[problem.problem_frontend_id] = problem
-                if not problem.premium:
-                    self.free_problem_cache[problem.problem_frontend_id] = problem
+
+            all_problem_cache_tmp = {
+                problem.problem_frontend_id: problem for problem in problems
+            }
+
+            free_problem_cache_tmp = {
+                problem.problem_frontend_id: problem
+                for problem in problems
+                if not problem.premium
+            }
+
+            self.all_problem_cache = all_problem_cache_tmp
+            self.free_problem_cache = free_problem_cache_tmp
+
             logger.info("Problem cache refresh completed.")
         except Exception as e:
             logger.error("Error refreshing cache", exc_info=e)
@@ -423,14 +433,14 @@ class LeetCodeProblemManager:
 
     async def get_problem_desc(
         self, problem_frontend_id: int, bot: Bot | Client
-    ) -> Embed | None:
+    ) -> list[Embed]:
         problem_with_tags = await self.get_problem_with_frontend_id(
             problem_frontend_id=problem_frontend_id
         )
 
         if not problem_with_tags:
             logger.info(f"Problem with id {problem_frontend_id} not found.")
-            return
+            return []
 
         problem_obj = problem_with_tags.problem
 

@@ -11,6 +11,7 @@ dependencies = [
     "flask>=3.1.2",
     "flask-sqlalchemy>=3.1.1",
     "google-re2>=1.1.20251105",
+    "markdownify>=1.2.3",
     "pandoc>=2.4",
     "prettyprint>=0.1.5",
     "sqlalchemy>=2.0.44",

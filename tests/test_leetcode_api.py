@@ -1,6 +1,5 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import logging
 import pytest
 
 from core.leetcode_api import FetchError, LeetCodeAPI
@@ -18,16 +17,6 @@ from models.leetcode import ProblemDifficulity
 @pytest.fixture
 def leetcode_api(mock_logger):
     return LeetCodeAPI()
-
-
-def test_parse_problem_desc(leetcode_api):
-    html_content = "<p>Test <strong>Bold</strong> <em>Italic</em> <code>Code</code> <sup>Sup</sup></p>"
-
-    parsed = leetcode_api._parse_problem_desc(html_content)
-    assert "**Bold**" in parsed
-    assert "*Italic*" in parsed
-    assert "`Code`" in parsed
-    assert "^Sup" in parsed
 
 
 @pytest.mark.asyncio

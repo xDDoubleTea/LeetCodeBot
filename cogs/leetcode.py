@@ -13,7 +13,7 @@ from discord import (
 from discord.channel import ForumChannel, ThreadWithMessage
 from discord.ext import commands
 
-from config.constants import THEME_COLOR, preview_len
+from config.constants import THEME_COLOR, PREVIEW_LEN
 from config.secrets import debug
 from db.problem import Problem
 from main import LeetCodeBot
@@ -53,7 +53,7 @@ class LeetCode(commands.Cog):
         """
         if not content:
             return "No description available."
-        return content[:preview_len] + ("..." if len(content) > preview_len else "")
+        return content[:PREVIEW_LEN] + ("..." if len(content) > PREVIEW_LEN else "")
 
     @app_commands.command(name="daily", description="Get today's LeetCode problem")
     @app_commands.guild_only()
@@ -262,15 +262,15 @@ class LeetCode(commands.Cog):
             logger.info(
                 f"Fetching problem description with ID {id} for guild {interaction.guild_id}"
             )
-            embed = await self.leetcode_problem_manager.get_problem_desc(
+            embeds = await self.leetcode_problem_manager.get_problem_desc(
                 problem_frontend_id=problem_frontend_id,
                 bot=self.bot,
             )
-            if not embed:
+            if not embeds:
                 await interaction.followup.send(f"Problem id with {id} not found.")
                 return
 
-            await interaction.followup.send(embed=embed)
+            await interaction.followup.send(embeds=embeds)
         except Exception as e:
             logger.error("An error occurred", exc_info=e)
             await interaction.followup.send(
