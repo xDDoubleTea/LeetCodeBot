@@ -262,15 +262,15 @@ class LeetCode(commands.Cog):
             logger.info(
                 f"Fetching problem description with ID {id} for guild {interaction.guild_id}"
             )
-            embed = await self.leetcode_problem_manager.get_problem_desc(
+            embeds = await self.leetcode_problem_manager.get_problem_desc(
                 problem_frontend_id=problem_frontend_id,
                 bot=self.bot,
             )
-            if not embed:
+            if not embeds:
                 await interaction.followup.send(f"Problem id with {id} not found.")
                 return
 
-            await interaction.followup.send(embed=embed)
+            await interaction.followup.send(embeds=embeds)
         except Exception as e:
             logger.error("An error occurred", exc_info=e)
             await interaction.followup.send(

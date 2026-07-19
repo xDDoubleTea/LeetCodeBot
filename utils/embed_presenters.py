@@ -1,6 +1,7 @@
 import logging
-from typing import Set
-import re
+from typing import Set, List
+import re2
+from markdownify import markdownify
 from bs4 import BeautifulSoup
 import discord
 from discord import Client, Embed
@@ -82,9 +83,12 @@ def get_embed_color(difficulty_db_repr: int) -> discord.Color:
         return discord.Color.blue()  # Default to blue if unknown
 
 
-def get_problem_desc_picture(self, problem: Problem) -> str:
-    # TODO: Returns the example pictures of the problems.
-    return ""
+def get_problem_desc_pictures(content: str) -> List[str]:
+    if not content:
+        return []
+
+    matches = re2.findall(r'<img[^>]+src="([^">]+)"', content)
+    return matches[:4]
 
 
 def parse_problem_desc(content: str) -> str:
@@ -94,34 +98,39 @@ def parse_problem_desc(content: str) -> str:
     logger.debug("Parsing problem description")
     if not content:
         return "No description available."
-    soup = BeautifulSoup(content, "html.parser")
 
-    for tag in soup.find_all("sup"):
-        tag.string = f"^{tag.get_text()}"
-    for tag in soup.find_all("code"):
-        tag.string = f"`{tag.get_text()}`"
-    for tag in soup.find_all("em"):
-        tag.string = f"*{tag.get_text()}*"
-    for tag in soup.find_all("strong"):
-        tag.string = f"**{tag.get_text()}**"
+    content = re2.sub(
+        r"(?s)<table.*?>.*?</table>", "\n<em>[Table omitted for preview]<em>\n", content
+    )
 
-    text_only = soup.get_text()
-    problem_md = re.sub(r"\n\s*\n", "\n\n", text_only.strip())
-    if len(text_only.strip()) > PREVIEW_LEN:
-        problem_md += "..."
-    return problem_md
+    md_text = markdownify(content, heading_style="ATX", strip=["img"]).strip()
+    md_text = re2.sub(r"\n\s*\n", "\n\n", md_text)
+
+    if len(md_text) <= PREVIEW_LEN:
+        return md_text
+
+    truncated = md_text[:PREVIEW_LEN].rsplit(" ", 1)[0]
+
+    if truncated.count("`") % 2 != 0:
+        truncated += "`"
+    if truncated.count("**") % 2 != 0:
+        truncated += "**"
+    elif re2.sub(r"\*\*", "", truncated).count("*") % 2 != 0:
+        truncated += "*"
+
+    return truncated + "..."
 
 
 def get_problem_desc_embed(
     problem: Problem, problem_tags: Set[TopicTags], bot: commands.Bot | Client
-) -> Embed:
+) -> List[Embed]:
     """
     Get the description embed for a given problem.
     """
     embed = create_themed_embed(
         title=f"{problem.problem_frontend_id}. {problem.title}",
         client=bot,
-        description=problem.description,
+        description=parse_problem_desc(problem.description),
     )
     embed.url = problem.url
     difficulty_str = get_difficulty_str_repr(problem.difficulty)
@@ -134,4 +143,16 @@ def get_problem_desc_embed(
         inline=True,
     )
     embed.color = get_embed_color(problem.difficulty)
-    return embed
+
+    embeds = [embed]
+    image_urls = get_problem_desc_pictures(content=problem.description)
+
+    if image_urls:
+        embed.set_image(url=image_urls[0])
+
+        for img_url in image_urls[1:]:
+            img_embed = discord.Embed(url=problem.url)
+            img_embed.set_image(url=img_url)
+            embeds.append(img_embed)
+
+    return embeds

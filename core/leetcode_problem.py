@@ -433,14 +433,14 @@ class LeetCodeProblemManager:
 
     async def get_problem_desc(
         self, problem_frontend_id: int, bot: Bot | Client
-    ) -> Embed | None:
+    ) -> list[Embed]:
         problem_with_tags = await self.get_problem_with_frontend_id(
             problem_frontend_id=problem_frontend_id
         )
 
         if not problem_with_tags:
             logger.info(f"Problem with id {problem_frontend_id} not found.")
-            return
+            return []
 
         problem_obj = problem_with_tags.problem
 
