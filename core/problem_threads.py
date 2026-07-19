@@ -246,7 +246,7 @@ class ProblemThreadsManager:
             thread_content += (
                 "This problem is premium only, so there is no description available."
             )
-        thread_embed = get_problem_desc_embed(
+        thread_embeds = get_problem_desc_embed(
             problem=problem, problem_tags=problem_tags, bot=bot
         )
         available_tags = channel.available_tags
@@ -271,7 +271,7 @@ class ProblemThreadsManager:
         thread = await channel.create_thread(
             name=thread_name,
             content=thread_content,
-            embed=thread_embed,
+            embeds=thread_embeds,
             applied_tags=[tag for tag in available_tags if tag.name in tags_to_assign],
         )
         await self.create_thread_in_db(
