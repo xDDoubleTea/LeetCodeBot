@@ -48,6 +48,7 @@ class LeetCodeBot(commands.Bot):
             self.database_manager,
             leetcode_problem_manager=self.leetcode_problem_manger,
         )
+        self.tag_cache: list[str] = []
 
     async def setup_hook(self) -> None:
         logger.info("Loading cogs...")
@@ -58,6 +59,11 @@ class LeetCodeBot(commands.Bot):
         logger.info("Initializing caches...")
         await self.leetcode_problem_manger.init_cache()
         await self.problem_threads_manager.init_cache()
+        all_topics_dict = await self.leetcode_problem_manger.get_all_topics_from_db()
+        self.tag_cache = [topic.tag_name for topic in all_topics_dict.values()]
+
+        logger.debug(self.tag_cache)
+
         logger.info("Caches initialized.")
 
     async def close(self) -> None:
