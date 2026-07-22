@@ -44,3 +44,8 @@ class ProblemTitlePaginationMetaData(BasePaginationMetaData):
 class FilterbyTagPaginationMetaData(BasePaginationMetaData):
     tag_name_query: str
     data_len: int
+
+
+@dataclass
+class AllTagsPaginationMetaData(BasePaginationMetaData):
+    data_len: int

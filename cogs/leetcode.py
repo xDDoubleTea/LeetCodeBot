@@ -20,6 +20,7 @@ from main import LeetCodeBot
 from models.leetcode import ProblemDifficulity, ProblemWithTags, ThreadCreationEnum
 
 from models.pagination import (
+    AllTagsPaginationMetaData,
     FilterbyTagPaginationMetaData,
     ProblemTitlePaginationMetaData,
 )
@@ -30,6 +31,7 @@ from utils.embed_presenters import (
 from utils.handle_leetcode_interation import handle_leetcode_interaction
 from utils.tag_transformer import TagTransformer
 from view.pagination_view import (
+    AllTagsPaginationView,
     BasePaginationView,
     FilterbyTagPaginationView,
     ProblemTitlePaginationView,
@@ -78,7 +80,9 @@ class LeetCode(commands.Cog):
 
     def format_problem(
         self,
-        metadata: ProblemTitlePaginationMetaData | FilterbyTagPaginationMetaData,
+        metadata: ProblemTitlePaginationMetaData
+        | FilterbyTagPaginationMetaData
+        | AllTagsPaginationMetaData,
         problems_list: List[Problem],
     ) -> Embed:
         embed_title = ""
@@ -86,6 +90,8 @@ class LeetCode(commands.Cog):
             embed_title = f"Problem title matching '{metadata.search_regex}'"
         elif isinstance(metadata, FilterbyTagPaginationMetaData):
             embed_title = f"Filtered by tag '{metadata.tag_name_query}'"
+        elif isinstance(metadata, AllTagsPaginationMetaData):
+            embed_title = "All Available Tags"
 
         embed = embed_utils.create_themed_embed(
             title=embed_title,
@@ -96,6 +102,22 @@ class LeetCode(commands.Cog):
             embed.add_field(
                 name=f"{problem.problem_frontend_id}. {problem.title} [{ProblemDifficulity.from_db_repr(problem.difficulty).value[1]}]",
                 value=problem.url,
+                inline=False,
+            )
+        return embed
+
+    def format_tags(
+        self, metadata: AllTagsPaginationMetaData, tags_list: List[str]
+    ) -> Embed:
+        embed = embed_utils.create_themed_embed(
+            title="All available tags",
+            description=f"Total problems found: {metadata.data_len}",
+            client=metadata.client,
+        )
+        for tag in tags_list:
+            embed.add_field(
+                name="Tag name",
+                value=tag,
                 inline=False,
             )
         return embed
@@ -205,6 +227,42 @@ class LeetCode(commands.Cog):
             logger.debug(e)
 
     @app_commands.command(
+        name="check-available-tags",
+        description="Get all possible tags for a LeetCode Problem",
+    )
+    async def check_available_tags(self, interaction: Interaction):
+        await interaction.response.defer(thinking=True)
+
+        guild = interaction.guild
+        assert isinstance(guild, Guild)
+        channel = interaction.channel
+        if not channel or isinstance(channel, DMChannel):
+            return await interaction.response.send_message(
+                "This command can only be used in a server!", ephemeral=True
+            )
+
+        metadata = AllTagsPaginationMetaData(
+            guild_name=guild.name,
+            guild_id=guild.id,
+            channel_name=channel.name or "No name",
+            channel_id=channel.id,
+            user_name=interaction.user.name,
+            user_id=interaction.user.id,
+            client=interaction.client,
+            theme_color=THEME_COLOR,
+            data_len=len(self.bot.tag_cache),
+        )
+        view = AllTagsPaginationView(
+            metadata=metadata,
+            data=self.bot.tag_cache,
+            format_page=self.format_tags,
+            ephemeral=False,
+            items_per_page=15,
+            select_placeholder="Select a problem to open/create thread...",
+        )
+        await view.send_initial_message(interaction=interaction, followup=True)
+
+    @app_commands.command(
         name="filter-by-tag", description="Get LeetCode Problem with tags"
     )
     @app_commands.describe(tag_name="The tag name")
@@ -214,7 +272,6 @@ class LeetCode(commands.Cog):
         interaction: Interaction,
         tag_name: app_commands.Transform[str, TagTransformer],
     ):
-        # await interaction.response.send_message("Do nothing right now :(")
         await interaction.response.defer(thinking=True)
         filtered_list = list(
             await self.leetcode_problem_manager.get_problems_with_tag_name(tag_name)
