@@ -111,7 +111,7 @@ class LeetCode(commands.Cog):
     ) -> Embed:
         embed = embed_utils.create_themed_embed(
             title="All available tags",
-            description=f"Total problems found: {metadata.data_len}",
+            description=f"Total tags found: {metadata.data_len}",
             client=metadata.client,
         )
         for tag in tags_list:
