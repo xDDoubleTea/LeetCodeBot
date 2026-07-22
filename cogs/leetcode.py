@@ -15,17 +15,25 @@ from discord.ext import commands
 
 from config.constants import THEME_COLOR, PREVIEW_LEN
 from config.secrets import debug
-from db.problem import Problem
+from db.problem import Problem, TopicTags
 from main import LeetCodeBot
 from models.leetcode import ProblemDifficulity, ProblemWithTags, ThreadCreationEnum
 
-from models.pagination import ProblemTitlePaginationMetaData
+from models.pagination import (
+    FilterbyTagPaginationMetaData,
+    ProblemTitlePaginationMetaData,
+)
 from utils import embed_utils
 from utils.embed_presenters import (
     get_user_info_embed,
 )
 from utils.handle_leetcode_interation import handle_leetcode_interaction
-from view.pagination_view import BasePaginationView, ProblemTitlePaginationView
+from utils.tag_transformer import TagTransformer
+from view.pagination_view import (
+    BasePaginationView,
+    FilterbyTagPaginationView,
+    ProblemTitlePaginationView,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +55,19 @@ class LeetCode(commands.Cog):
             logger.info("Starting weekly LeetCode cache refresh task...")
             self.leetcode_problem_manager.weekly_cache_refresh.start()
 
+    async def cog_app_command_error(
+        self, interaction: Interaction, error: app_commands.AppCommandError
+    ):
+        logger.error(error.__cause__)
+        if isinstance(error, app_commands.TransformerError):
+            await interaction.response.send_message(
+                str(error.__cause__), ephemeral=True
+            )
+        else:
+            await interaction.response.send_message(
+                "An error occurred.", ephemeral=True
+            )
+
     async def parse_problem_desc(self, content: str) -> str:
         """
         Parses the problem description from the LeetCode API response.
@@ -55,62 +76,19 @@ class LeetCode(commands.Cog):
             return "No description available."
         return content[:PREVIEW_LEN] + ("..." if len(content) > PREVIEW_LEN else "")
 
-    @app_commands.command(name="daily", description="Get today's LeetCode problem")
-    @app_commands.guild_only()
-    @handle_leetcode_interaction(is_daily=True)
-    async def daily_problem(self, interaction: Interaction) -> ProblemWithTags:
-        assert interaction.guild
-        logger.info(f"Fetching today's problem for guild {interaction.guild.id}")
-        problem = await self.leetcode_problem_manager.get_daily_problem()
-        logger.debug(f"Problem fetched: {problem}")
-        return problem
-
-    @app_commands.command(
-        name="problem",
-        description="Get Leetcode Problem with problem ID",
-    )
-    @app_commands.describe(id="The ID of the LeetCode problem")
-    @app_commands.guild_only()
-    @handle_leetcode_interaction(is_daily=False)
-    async def leetcode_problem(
-        self, interaction: Interaction, id: int
-    ) -> ProblemWithTags:
-        assert interaction.guild
-        logger.info(f"Fetching problem with ID {id} for guild {interaction.guild.id}")
-        problem = await self.leetcode_problem_manager.get_problem_with_frontend_id(id)
-        logger.debug(f"Problem fetched: {problem}")
-        return problem
-
-    @app_commands.command(
-        name="random", description="Returns a random leetcode problem"
-    )
-    @app_commands.describe(
-        difficulty="The problem difficulty",
-        premium="Whether to include premium problems, default is False",
-    )
-    @app_commands.guild_only()
-    @handle_leetcode_interaction(is_daily=False)
-    async def random_problem(
-        self,
-        interaction: Interaction,
-        difficulty: Optional[Literal["Easy", "Medium", "Hard"]],
-        premium: bool = False,
-    ):
-        assert interaction.guild
-        logger.info(
-            f"Fetching random problem (Difficulty: {difficulty}) for guild {interaction.guild.id}"
-        )
-        problem = await self.leetcode_problem_manager.get_random_problem(
-            difficulty=difficulty, premium=premium
-        )
-        logger.debug(f"Problem fetched: {problem}")
-        return problem
-
     def format_problem(
-        self, metadata: ProblemTitlePaginationMetaData, problems_list: List[Problem]
+        self,
+        metadata: ProblemTitlePaginationMetaData | FilterbyTagPaginationMetaData,
+        problems_list: List[Problem],
     ) -> Embed:
+        embed_title = ""
+        if isinstance(metadata, ProblemTitlePaginationMetaData):
+            embed_title = f"Problem title matching '{metadata.search_regex}'"
+        elif isinstance(metadata, FilterbyTagPaginationMetaData):
+            embed_title = f"Filtered by tag '{metadata.tag_name_query}'"
+
         embed = embed_utils.create_themed_embed(
-            title=f"Problem title matching '{metadata.search_regex}'",
+            title=embed_title,
             description=f"Total problems found: {metadata.data_len}",
             client=metadata.client,
         )
@@ -217,9 +195,6 @@ class LeetCode(commands.Cog):
                 select_callback=self.handle_problem_select,
                 select_placeholder="Select a problem to open/create thread...",
             )
-            logger.debug(view.select_callback)
-            logger.debug(view.select_options_builder)
-            logger.debug(view.select_menu)
 
             await view.send_initial_message(interaction=interaction, followup=True)
         except ValueError as e:
@@ -228,6 +203,53 @@ class LeetCode(commands.Cog):
                 ephemeral=True,
             )
             logger.debug(e)
+
+    @app_commands.command(
+        name="filter-by-tag", description="Get LeetCode Problem with tags"
+    )
+    @app_commands.describe(tag_name="The tag name")
+    @app_commands.guild_only()
+    async def filter_by_tag(
+        self,
+        interaction: Interaction,
+        tag_name: app_commands.Transform[str, TagTransformer],
+    ):
+        # await interaction.response.send_message("Do nothing right now :(")
+        await interaction.response.defer(thinking=True)
+        filtered_list = list(
+            await self.leetcode_problem_manager.get_problems_with_tag_name(tag_name)
+        )
+
+        guild = interaction.guild
+        assert isinstance(guild, Guild)
+        channel = interaction.channel
+        if not channel or isinstance(channel, DMChannel):
+            return await interaction.response.send_message(
+                "This command can only be used in a server!", ephemeral=True
+            )
+
+        metadata = FilterbyTagPaginationMetaData(
+            guild_name=guild.name,
+            guild_id=guild.id,
+            channel_name=channel.name or "No name",
+            channel_id=channel.id,
+            user_name=interaction.user.name,
+            user_id=interaction.user.id,
+            client=interaction.client,
+            theme_color=THEME_COLOR,
+            tag_name_query=tag_name,
+            data_len=len(filtered_list),
+        )
+        view = FilterbyTagPaginationView(
+            metadata=metadata,
+            data=filtered_list,
+            format_page=self.format_problem,
+            ephemeral=False,
+            select_options_builder=self.build_problem_options,
+            select_callback=self.handle_problem_select,
+            select_placeholder="Select a problem to open/create thread...",
+        )
+        await view.send_initial_message(interaction=interaction, followup=True)
 
     @app_commands.command(
         name="desc", description="Get LeetCode Problem description with problem ID"
@@ -344,19 +366,56 @@ class LeetCode(commands.Cog):
             )
             return
 
-    @set_forum_channel.error
-    async def on_set_forum_error(
-        self, interaction: Interaction, error: app_commands.AppCommandError
-    ) -> None:
-        if isinstance(error, app_commands.errors.MissingPermissions):
-            await interaction.response.send_message(
-                "You do not have the required permissions to use this command.",
-                ephemeral=True,
-            )
-        else:
-            await interaction.response.send_message(
-                f"An error occurred: {error}", ephemeral=True
-            )
+    @app_commands.command(name="daily", description="Get today's LeetCode problem")
+    @app_commands.guild_only()
+    @handle_leetcode_interaction(is_daily=True)
+    async def daily_problem(self, interaction: Interaction) -> ProblemWithTags:
+        assert interaction.guild
+        logger.info(f"Fetching today's problem for guild {interaction.guild.id}")
+        problem = await self.leetcode_problem_manager.get_daily_problem()
+        logger.debug(f"Problem fetched: {problem}")
+        return problem
+
+    @app_commands.command(
+        name="problem",
+        description="Get Leetcode Problem with problem ID",
+    )
+    @app_commands.describe(id="The ID of the LeetCode problem")
+    @app_commands.guild_only()
+    @handle_leetcode_interaction(is_daily=False)
+    async def leetcode_problem(
+        self, interaction: Interaction, id: int
+    ) -> ProblemWithTags:
+        assert interaction.guild
+        logger.info(f"Fetching problem with ID {id} for guild {interaction.guild.id}")
+        problem = await self.leetcode_problem_manager.get_problem_with_frontend_id(id)
+        logger.debug(f"Problem fetched: {problem}")
+        return problem
+
+    @app_commands.command(
+        name="random", description="Returns a random leetcode problem"
+    )
+    @app_commands.describe(
+        difficulty="The problem difficulty",
+        premium="Whether to include premium problems, default is False",
+    )
+    @app_commands.guild_only()
+    @handle_leetcode_interaction(is_daily=False)
+    async def random_problem(
+        self,
+        interaction: Interaction,
+        difficulty: Optional[Literal["Easy", "Medium", "Hard"]],
+        premium: bool = False,
+    ):
+        assert interaction.guild
+        logger.info(
+            f"Fetching random problem (Difficulty: {difficulty}) for guild {interaction.guild.id}"
+        )
+        problem = await self.leetcode_problem_manager.get_random_problem(
+            difficulty=difficulty, premium=premium
+        )
+        logger.debug(f"Problem fetched: {problem}")
+        return problem
 
     @app_commands.command(name="statistics", description="Get user statistics")
     @app_commands.describe(username="The LeetCode username")
@@ -372,6 +431,20 @@ class LeetCode(commands.Cog):
             )
             await interaction.followup.send(
                 "Something went wrong when fetching user statistics."
+            )
+
+    @set_forum_channel.error
+    async def on_set_forum_error(
+        self, interaction: Interaction, error: app_commands.AppCommandError
+    ) -> None:
+        if isinstance(error, app_commands.errors.MissingPermissions):
+            await interaction.response.send_message(
+                "You do not have the required permissions to use this command.",
+                ephemeral=True,
+            )
+        else:
+            await interaction.response.send_message(
+                f"An error occurred: {error}", ephemeral=True
             )
 
 

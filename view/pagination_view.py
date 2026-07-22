@@ -7,6 +7,7 @@ from discord.ui import Button, Select, View, button
 
 from models.pagination import (
     BasePaginationMetaData,
+    FilterbyTagPaginationMetaData,
     PaginationViewButtonLayouts,
     ProblemTitlePaginationMetaData,
 )
@@ -203,6 +204,39 @@ class ProblemTitlePaginationView(BasePaginationView[ProblemTitlePaginationMetaDa
         metadata: ProblemTitlePaginationMetaData,
         data: List[Any],
         format_page: Callable[[ProblemTitlePaginationMetaData, List[Any]], Embed],
+        items_per_page: int = 10,
+        attached_message: Optional[Message] = None,
+        ephemeral=True,
+        select_options_builder: Optional[
+            Callable[[List[Any]], List[SelectOption]]
+        ] = None,
+        select_callback: Optional[
+            Callable[[Interaction, "BasePaginationView", List[str]], Awaitable[None]]
+        ] = None,
+        select_placeholder: str = "Select an option...",
+    ):
+        super().__init__(
+            timeout=timeout,
+            metadata=metadata,
+            data=data,
+            format_page=format_page,
+            items_per_page=items_per_page,
+            attached_message=attached_message,
+            ephemeral=ephemeral,
+            select_callback=select_callback,
+            select_options_builder=select_options_builder,
+            select_placeholder=select_placeholder,
+        )
+
+
+class FilterbyTagPaginationView(BasePaginationView[FilterbyTagPaginationMetaData]):
+    def __init__(
+        self,
+        *,
+        timeout: Optional[int] = 180,
+        metadata: FilterbyTagPaginationMetaData,
+        data: List[Any],
+        format_page: Callable[[FilterbyTagPaginationMetaData, List[Any]], Embed],
         items_per_page: int = 10,
         attached_message: Optional[Message] = None,
         ephemeral=True,
