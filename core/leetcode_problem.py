@@ -195,6 +195,11 @@ class LeetCodeProblemManager:
             all_topics = db.execute(stmt).scalars().all()
             return {topic.id: topic for topic in all_topics}
 
+    async def get_problems_with_tag_name(self, tag_name: str) -> Sequence[Problem]:
+        return await self.get_problems_by_criteria(
+            Problem.tags.any(TopicTags.tag_name == tag_name)
+        )
+
     async def get_problems_by_criteria(
         self, *criteria: ColumnElement[bool]
     ) -> Sequence[Problem]:
