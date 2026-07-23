@@ -1,6 +1,8 @@
+import datetime
 import logging
 from typing import List, Literal, Optional
 
+from discord.ext import tasks
 from discord import (
     DMChannel,
     Embed,
@@ -13,8 +15,9 @@ from discord import (
 from discord.channel import ForumChannel, ThreadWithMessage
 from discord.ext import commands
 
-from config.constants import THEME_COLOR, PREVIEW_LEN
+from config.constants import THEME_COLOR, PREVIEW_LEN, tz
 from config.secrets import debug
+from core.leetcode_problem import ProblemNotFound
 from db.problem import Problem, TopicTags
 from main import LeetCodeBot
 from models.leetcode import ProblemDifficulity, ProblemWithTags, ThreadCreationEnum
@@ -47,15 +50,22 @@ class LeetCode(commands.Cog):
         self.leetcode_problem_manager = bot.leetcode_problem_manger
         self.leetcode_api = bot.leetcode_api
         self.problem_threads_manager = bot.problem_threads_manager
+        self.leetcode_api_refresh_time = datetime.time(hour=8, minute=5, tzinfo=tz)
 
-    @commands.Cog.listener()
-    async def on_ready(self) -> None:
-        if (
-            not debug
-            and not self.leetcode_problem_manager.weekly_cache_refresh.is_running()
-        ):
-            logger.info("Starting weekly LeetCode cache refresh task...")
-            self.leetcode_problem_manager.weekly_cache_refresh.start()
+    @tasks.loop(hours=24, name="daily_cache_refresh")
+    async def daily_cache_refresh(self) -> None:
+        logger.info("Refreshing LeetCode problems cache...")
+        await self.leetcode_problem_manager.refresh_cache()
+        logger.info("LeetCode problems cache refreshed.")
+
+    async def cog_load(self) -> None:
+        if debug:
+            return
+        logger.info("Starting daily LeetCode cache refresh task...")
+        self.daily_cache_refresh.start()
+
+    async def cog_unload(self) -> None:
+        self.daily_cache_refresh.cancel()
 
     async def cog_app_command_error(
         self, interaction: Interaction, error: app_commands.AppCommandError
@@ -377,9 +387,9 @@ class LeetCode(commands.Cog):
         await interaction.followup.send("LeetCode problems cache refreshed.")
 
     @app_commands.command(
-        name="check_leetcode_api", description="Check LeetCode API status"
+        name="is-leetcode-down", description="Check LeetCode API status"
     )
-    async def check_leetcode_api(self, interaction: Interaction) -> None:
+    async def is_leetcode_down(self, interaction: Interaction) -> None:
         await interaction.response.defer(thinking=True)
         try:
             status = await self.leetcode_api.health_check()
@@ -446,6 +456,7 @@ class LeetCode(commands.Cog):
         assert interaction.guild
         logger.info(f"Fetching problem with ID {id} for guild {interaction.guild.id}")
         problem = await self.leetcode_problem_manager.get_problem_with_frontend_id(id)
+
         logger.debug(f"Problem fetched: {problem}")
         return problem
 

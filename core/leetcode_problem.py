@@ -4,7 +4,6 @@ from typing import Dict, Literal, Optional, Sequence, Set
 
 import re2
 from discord import Client, Embed
-from discord.ext import tasks
 from discord.ext.commands import Bot
 from sqlalchemy import ColumnElement, select
 from sqlalchemy.dialects.sqlite import insert as sqlite_upsert
@@ -33,12 +32,6 @@ class LeetCodeProblemManager:
         self.free_problem_cache: Dict[int, Problem] = dict()
         self.leetcode_api: LeetCodeAPI = leetcode_api
         self.database_manager: DatabaseManager = database_manager
-
-    @tasks.loop(hours=24 * 7, name="weekly_cache_refresh")
-    async def weekly_cache_refresh(self) -> None:
-        logger.info("Refreshing LeetCode problems cache...")
-        await self.refresh_cache()
-        logger.info("LeetCode problems cache refreshed.")
 
     async def _bulk_upsert_problems(self, api_problems: Dict[int, Problem]) -> None:
         with self.database_manager as db:
@@ -328,28 +321,12 @@ class LeetCodeProblemManager:
             if problem:
                 self.all_problem_cache[problem_frontend_id] = problem
                 return ProblemWithTags(problem, set(problem.tags))
-
-            logger.info(
-                f"Problem with ID {problem_frontend_id} not found in DB. Fetching from LeetCode API."
+            raise ProblemNotFound(
+                f"Problem with ID {problem_frontend_id} not found in cache nor DB"
             )
-            problem_data = await self.leetcode_api.fetch_problem_by_id(
-                problem_frontend_id
-            )
-            logger.debug(f"API Problem Data: {problem_data}")
-            if not problem_data:
-                raise ProblemNotFound(
-                    f"Problem with ID {problem_frontend_id} not found."
-                )
-            problem = problem_data.problem
-            tags = problem_data.tags
 
-            problem = await self.add_problem_to_db(problem, tags)
-
-            self.all_problem_cache[problem_frontend_id] = problem
-            if not problem.premium:
-                self.free_problem_cache[problem_frontend_id] = problem
-            logger.debug(f"New Problem Added: {problem}")
-            return ProblemWithTags(problem, set(problem.tags))
+        except ProblemNotFound as e:
+            raise e
         except Exception as e:
             logger.error(
                 f"Error retrieving problem with ID {problem_frontend_id}",

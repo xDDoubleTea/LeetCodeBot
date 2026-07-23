@@ -1,0 +1,17 @@
+query questionOfToday {
+  activeDailyCodingChallengeQuestion {
+    link
+    question {
+      questionId
+      questionFrontendId
+      title
+      titleSlug
+      content
+      difficulty
+      paidOnly: isPaidOnly
+      topicTags {
+        name
+      }
+    }
+  }
+}

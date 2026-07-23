@@ -3,6 +3,7 @@ import logging
 import os
 import signal
 
+import aiohttp
 import discord
 import re2
 from discord.ext import commands
@@ -38,33 +39,44 @@ class LeetCodeBot(commands.Bot):
         intents = discord.Intents.all()
         super().__init__(command_prefix=command_prefix, intents=intents)
         self.engine = create_engine(DATABASE_URL, echo=debug, hide_parameters=True)
-        self.database_manager = DatabaseManager(self, self.engine)
-        self.leetcode_api = LeetCodeAPI()
-        self.leetcode_problem_manger = LeetCodeProblemManager(
+        self.tag_cache: list[str] = []
+        self.database_manager: DatabaseManager
+        self.leetcode_api: LeetCodeAPI
+        self.leetcode_problem_manger: LeetCodeProblemManager
+        self.problem_threads_manager: ProblemThreadsManager
+        self.session: aiohttp.ClientSession
+
+    async def setup_hook(self) -> None:
+        self.database_manager: DatabaseManager = DatabaseManager(self, self.engine)
+
+        self.session = aiohttp.ClientSession()
+        self.leetcode_api: LeetCodeAPI = LeetCodeAPI(session=self.session)
+        self.leetcode_problem_manger: LeetCodeProblemManager = LeetCodeProblemManager(
             leetcode_api=self.leetcode_api,
             database_manager=self.database_manager,
         )
-        self.problem_threads_manager = ProblemThreadsManager(
+        self.problem_threads_manager: ProblemThreadsManager = ProblemThreadsManager(
             self.database_manager,
             leetcode_problem_manager=self.leetcode_problem_manger,
         )
-        self.tag_cache: list[str] = []
 
-    async def setup_hook(self) -> None:
         logger.info("Loading cogs...")
         for cog in os.listdir("cogs"):
             if cog.endswith(".py") and not cog.startswith("_"):
                 await self.load_extension(f"cogs.{cog[:-3]}")
         logger.info("Cogs loaded.")
+
         logger.info("Initializing caches...")
         await self.leetcode_problem_manger.init_cache()
         await self.problem_threads_manager.init_cache()
+
         all_topics_dict = await self.leetcode_problem_manger.get_all_topics_from_db()
         self.tag_cache = [topic.tag_name for topic in all_topics_dict.values()]
-
-        logger.debug(self.tag_cache)
-
         logger.info("Caches initialized.")
+
+        logger.info("Loading Graphql queries.")
+        self.leetcode_api._load_graphql_queries()
+        logger.info("Graphql queries loaded.")
 
     async def close(self) -> None:
         await super().close()
@@ -94,6 +106,7 @@ async def main():
             task.cancel()
             logger.info(f"Cancelling task {task.get_name()}...")
 
+        await bot.session.close()
         await bot.close()
         logger.info("Shutdown complete.")
         loop.stop()
