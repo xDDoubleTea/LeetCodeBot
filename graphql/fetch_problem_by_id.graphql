@@ -1,0 +1,14 @@
+query questionData($titleSlug: String!) {
+  question(titleSlug: $titleSlug) {
+    questionId
+    questionFrontendId
+    title
+    titleSlug
+    content
+    difficulty
+    paidOnly: isPaidOnly
+    topicTags {
+      name
+    }
+  }
+}

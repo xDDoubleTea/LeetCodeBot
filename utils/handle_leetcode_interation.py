@@ -5,6 +5,8 @@ from discord import Interaction, Thread
 from discord.channel import ThreadWithMessage
 
 from core.leetcode_api import FetchError
+from core.leetcode_problem import ProblemNotFound
+from db.problem import Problem
 from main import logger
 from models.leetcode import ThreadCreationEnum
 from utils.custom_exceptions import ForumChannelNotFound
@@ -94,6 +96,8 @@ def handle_leetcode_interaction(is_daily: bool = False):
             except FetchError as e:
                 logger.error("FetchError occurred", exc_info=e)
                 await interaction.followup.send(f"{e}")
+            except ProblemNotFound:
+                await interaction.followup.send("Problem not found, try again later?")
             except Exception as e:
                 logger.error("An error occurred", exc_info=e)
                 await interaction.followup.send(

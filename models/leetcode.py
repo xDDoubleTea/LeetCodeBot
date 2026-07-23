@@ -1,7 +1,8 @@
 import logging
+import datetime
 from dataclasses import dataclass
 from enum import Enum, IntEnum
-from typing import TYPE_CHECKING, Set
+from typing import TYPE_CHECKING, Set, List
 
 import discord
 
@@ -44,3 +45,45 @@ class ThreadCreationEnum(IntEnum):
 class ProblemWithTags:
     problem: "Problem"
     tags: Set["TopicTags"]
+
+
+@dataclass
+class UserSubmissionStat:
+    difficulity: str
+    ac_submission_count: int
+    total_submissions_and_ac_count: int
+
+
+@dataclass
+class UserProfile:
+    user_avatar: str
+    country_name: str
+    about_me: str
+    company: str
+    job_title: str
+    school: str
+    websites: List[str]
+
+
+@dataclass
+class UserSubmission:
+    title: str
+    title_slug: str
+    timestamp: str
+    status_display: str
+    url: str
+    lang_name: str
+    runtime: str
+    is_pending: bool
+    memory: str
+    frontend_id: int
+
+
+@dataclass
+class UserInfo:
+    user_name: str
+    github_url: str
+    twitter_url: str
+    linkedin_url: str
+    ac_submission: UserSubmissionStat
+    user_profile: UserProfile

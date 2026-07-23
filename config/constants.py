@@ -1,7 +1,9 @@
 import discord
+import datetime
 
 command_prefix = ">"
 
+tz = datetime.timezone(datetime.timedelta(hours=8))
 MY_GUILD = discord.Object(1039906085626196079)  # Replace with your guild ID
 PREVIEW_LEN = 1000
 

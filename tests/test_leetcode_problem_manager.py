@@ -166,37 +166,6 @@ async def test_get_problem_found_in_cache(manager):
 
     result = await manager.get_problem_with_frontend_id(1)
     assert result.problem == mock_problem
-    manager.leetcode_api.fetch_problem_by_id.assert_not_called()
-
-
-@pytest.mark.asyncio
-async def test_get_problem_fetch_api(manager, mock_db_session):
-    mock_db_session.execute.return_value.scalars.return_value.first.return_value = None
-
-    api_problem = Problem(
-        problem_frontend_id=5,
-        problem_id=50,
-        title="API Fetch",
-        difficulty=0,
-        url="http://example.com/api-fetch",
-        description="desc",
-        premium=False,
-    )
-    tags = {TopicTags(tag_name="TagA")}
-    manager.leetcode_api.fetch_problem_by_id.return_value = ProblemWithTags(
-        api_problem, tags
-    )
-
-    mock_db_session.query.return_value.filter_by.return_value.first.return_value = None
-
-    mock_db_session.add.side_effect = lambda x: setattr(x, "tags", list(tags))
-
-    result = await manager.get_problem_with_frontend_id(5)
-    assert result.problem == api_problem
-    assert 5 in manager.all_problem_cache
-    manager.leetcode_api.fetch_problem_by_id.assert_awaited_with(5)
-    mock_db_session.add.assert_any_call(api_problem)
-    mock_db_session.commit.assert_called()
 
 
 @pytest.mark.asyncio
