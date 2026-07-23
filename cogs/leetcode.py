@@ -1,5 +1,6 @@
 import datetime
 import logging
+from re import sub
 from typing import List, Literal, Optional
 
 from discord.ext import tasks
@@ -20,12 +21,18 @@ from config.secrets import debug
 from core.leetcode_problem import ProblemNotFound
 from db.problem import Problem, TopicTags
 from main import LeetCodeBot
-from models.leetcode import ProblemDifficulity, ProblemWithTags, ThreadCreationEnum
+from models.leetcode import (
+    ProblemDifficulity,
+    ProblemWithTags,
+    ThreadCreationEnum,
+    UserSubmission,
+)
 
 from models.pagination import (
     AllTagsPaginationMetaData,
     FilterbyTagPaginationMetaData,
     ProblemTitlePaginationMetaData,
+    UserSubmissionPaginationMetaData,
 )
 from utils import embed_utils
 from utils.embed_presenters import (
@@ -38,6 +45,7 @@ from view.pagination_view import (
     BasePaginationView,
     FilterbyTagPaginationView,
     ProblemTitlePaginationView,
+    UserSubmissionPaginationView,
 )
 
 logger = logging.getLogger(__name__)
@@ -88,11 +96,35 @@ class LeetCode(commands.Cog):
             return "No description available."
         return content[:PREVIEW_LEN] + ("..." if len(content) > PREVIEW_LEN else "")
 
+    def format_submissions(
+        self,
+        metadata: UserSubmissionPaginationMetaData,
+        submission_list: List[UserSubmission],
+    ) -> Embed:
+        embed = embed_utils.create_themed_embed(
+            title=f"Recent Submissions for {metadata.leetcode_username}",
+            description=f"Total submissions fetched {metadata.data_len}",
+            client=metadata.client,
+        )
+        for submission in submission_list:
+            embed.add_field(
+                name=f"{submission.frontend_id}. {submission.title} submission status",
+                value=f"""
+- [View submission on LeetCode]({submission.url})
+- Language: {submission.lang_name}
+- Time: <t:{submission.timestamp}:f>
+- Runtime: {submission.runtime}
+- Memory: {submission.memory}
+- Status: {submission.status_display}
+                """,
+                inline=False,
+            )
+
+        return embed
+
     def format_problem(
         self,
-        metadata: ProblemTitlePaginationMetaData
-        | FilterbyTagPaginationMetaData
-        | AllTagsPaginationMetaData,
+        metadata: ProblemTitlePaginationMetaData | FilterbyTagPaginationMetaData,
         problems_list: List[Problem],
     ) -> Embed:
         embed_title = ""
@@ -100,8 +132,6 @@ class LeetCode(commands.Cog):
             embed_title = f"Problem title matching '{metadata.search_regex}'"
         elif isinstance(metadata, FilterbyTagPaginationMetaData):
             embed_title = f"Filtered by tag '{metadata.tag_name_query}'"
-        elif isinstance(metadata, AllTagsPaginationMetaData):
-            embed_title = "All Available Tags"
 
         embed = embed_utils.create_themed_embed(
             title=embed_title,
@@ -486,12 +516,17 @@ class LeetCode(commands.Cog):
         return problem
 
     @app_commands.command(name="statistics", description="Get user statistics")
-    @app_commands.describe(username="The LeetCode username")
-    async def user_statistics(self, interaction: Interaction, username: str) -> None:
+    @app_commands.describe(leetcode_username="The LeetCode username")
+    async def user_statistics(
+        self, interaction: Interaction, leetcode_username: str
+    ) -> None:
         await interaction.response.defer(thinking=True, ephemeral=False)
         try:
-            info = await self.leetcode_api.user_info(username=username)
-            embed = get_user_info_embed(username=username, info=info, bot=self.bot)
+            info = await self.leetcode_api.user_info(username=leetcode_username)
+            logger.debug(info)
+            embed = get_user_info_embed(
+                username=leetcode_username, info=info, bot=self.bot
+            )
             await interaction.followup.send(embed=embed)
         except Exception as e:
             logger.error(
@@ -499,6 +534,64 @@ class LeetCode(commands.Cog):
             )
             await interaction.followup.send(
                 "Something went wrong when fetching user statistics."
+            )
+
+    @app_commands.command(
+        name="recent-submissions", description="Get user's recent submissions."
+    )
+    @app_commands.describe(
+        leetcode_username="The LeetCode user name.",
+        limit="How many submissions you want. 1 <= limit <= 100",
+    )
+    @app_commands.guild_only()
+    async def recent_submissions(
+        self, interaction: Interaction, leetcode_username: str, limit: int = 20
+    ) -> None:
+        await interaction.response.defer(thinking=True)
+
+        try:
+            submissions_list = await self.leetcode_api.user_submission(
+                username=leetcode_username, limit=limit
+            )
+            logger.debug(submissions_list)
+
+            guild = interaction.guild
+            assert isinstance(guild, Guild)
+            channel = interaction.channel
+            if not channel or isinstance(channel, DMChannel):
+                await interaction.response.send_message(
+                    "This command can only be used in a server!", ephemeral=True
+                )
+                return
+
+            metadata = UserSubmissionPaginationMetaData(
+                guild_name=guild.name,
+                guild_id=guild.id,
+                channel_name=channel.name or "No name",
+                channel_id=channel.id,
+                user_name=interaction.user.name,
+                user_id=interaction.user.id,
+                client=interaction.client,
+                theme_color=THEME_COLOR,
+                data_len=len(submissions_list),
+                leetcode_username=leetcode_username,
+            )
+            view = UserSubmissionPaginationView(
+                metadata=metadata,
+                data=submissions_list,
+                items_per_page=5,
+                format_page=self.format_submissions,
+                ephemeral=False,
+            )
+
+            await view.send_initial_message(interaction=interaction, followup=True)
+        except Exception as e:
+            logger.error(
+                "Something went wrong when fetching user's recent submissions.",
+                exc_info=e,
+            )
+            await interaction.followup.send(
+                "Something went wrong when fetching user's recent submissions."
             )
 
     @set_forum_channel.error

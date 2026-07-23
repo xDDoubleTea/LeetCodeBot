@@ -1,9 +1,11 @@
 import logging
 from dataclasses import dataclass
 from enum import IntEnum
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, List, Optional
 
 from discord import Client, Color
+
+from models.leetcode import UserSubmission
 
 logger = logging.getLogger(__name__)
 if TYPE_CHECKING:
@@ -48,4 +50,10 @@ class FilterbyTagPaginationMetaData(BasePaginationMetaData):
 
 @dataclass
 class AllTagsPaginationMetaData(BasePaginationMetaData):
+    data_len: int
+
+
+@dataclass
+class UserSubmissionPaginationMetaData(BasePaginationMetaData):
+    leetcode_username: str
     data_len: int

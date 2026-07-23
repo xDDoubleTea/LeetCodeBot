@@ -11,6 +11,7 @@ from models.pagination import (
     FilterbyTagPaginationMetaData,
     PaginationViewButtonLayouts,
     ProblemTitlePaginationMetaData,
+    UserSubmissionPaginationMetaData,
 )
 
 logger = logging.getLogger(__name__)
@@ -271,6 +272,41 @@ class AllTagsPaginationView(BasePaginationView[AllTagsPaginationMetaData]):
         metadata: AllTagsPaginationMetaData,
         data: List[Any],
         format_page: Callable[[AllTagsPaginationMetaData, List[Any]], Embed],
+        items_per_page: int = 10,
+        attached_message: Optional[Message] = None,
+        ephemeral=True,
+        select_options_builder: Optional[
+            Callable[[List[Any]], List[SelectOption]]
+        ] = None,
+        select_callback: Optional[
+            Callable[[Interaction, "BasePaginationView", List[str]], Awaitable[None]]
+        ] = None,
+        select_placeholder: str = "Select an option...",
+    ):
+        super().__init__(
+            timeout=timeout,
+            metadata=metadata,
+            data=data,
+            format_page=format_page,
+            items_per_page=items_per_page,
+            attached_message=attached_message,
+            ephemeral=ephemeral,
+            select_callback=select_callback,
+            select_options_builder=select_options_builder,
+            select_placeholder=select_placeholder,
+        )
+
+
+class UserSubmissionPaginationView(
+    BasePaginationView[UserSubmissionPaginationMetaData]
+):
+    def __init__(
+        self,
+        *,
+        timeout: Optional[int] = 180,
+        metadata: UserSubmissionPaginationMetaData,
+        data: List[Any],
+        format_page: Callable[[UserSubmissionPaginationMetaData, List[Any]], Embed],
         items_per_page: int = 10,
         attached_message: Optional[Message] = None,
         ephemeral=True,

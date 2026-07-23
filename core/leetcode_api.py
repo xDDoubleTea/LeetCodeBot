@@ -7,7 +7,14 @@ from pathlib import Path
 import aiohttp
 
 from db.problem import Problem, TopicTags
-from models.leetcode import ProblemDifficulity, ProblemWithTags
+from models.leetcode import (
+    ProblemDifficulity,
+    ProblemWithTags,
+    UserInfo,
+    UserProfile,
+    UserSubmission,
+    UserSubmissionStat,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +60,74 @@ class LeetCodeAPI:
         self.queries.clear()
         self._load_graphql_queries()
 
+    async def _parse_recent_submission_list(
+        self, raw_list: List[dict]
+    ) -> List[UserSubmission]:
+        return [
+            UserSubmission(
+                title=raw_submission.get("title", ""),
+                title_slug=raw_submission.get("titleSlug", ""),
+                timestamp=raw_submission.get("timestamp", ""),
+                status_display=raw_submission.get("statusDisplay", ""),
+                lang_name=raw_submission.get("langName", ""),
+                runtime=raw_submission.get("runtime", ""),
+                is_pending=raw_submission.get("isPending", False),
+                memory=raw_submission.get("memory", ""),
+                frontend_id=raw_submission.get("frontendId", 0),
+                url=f"https://leetcode.com/{raw_submission.get('url', '')}",
+            )
+            for raw_submission in raw_list
+        ]
+
+    async def _parse_user_submission_stat(self, raw_json: dict) -> UserSubmissionStat:
+        ac_submission_num = raw_json.get("acSubmissionNum", [])
+        ac_submission_count = 0
+        total_submissions_and_ac_count = 0
+        logger.debug(ac_submission_num)
+        for item in ac_submission_num:
+            if item.get("difficulty", "").lower() == "all":
+                ac_submission_count = item["count"]
+                total_submissions_and_ac_count = item["submissions"]
+                break
+
+        return UserSubmissionStat(
+            difficulity="All",
+            ac_submission_count=ac_submission_count,
+            total_submissions_and_ac_count=total_submissions_and_ac_count,
+        )
+        pass
+
+    async def _parse_user_profile(self, raw_json: dict) -> UserProfile:
+        logger.debug(raw_json.get("websites"))
+        return UserProfile(
+            user_avatar=raw_json.get("userAvatar", ""),
+            country_name=raw_json.get("countryName", ""),
+            about_me=raw_json.get("aboutMe", ""),
+            company=raw_json.get("company", ""),
+            job_title=raw_json.get("jobTitle", ""),
+            school=raw_json.get("school", ""),
+            websites=raw_json.get("websites", []),
+        )
+
+    async def _parse_user_info(self, raw_json: dict) -> UserInfo:
+        logger.debug(raw_json)
+
+        user_profile_json = raw_json.get("profile", {})
+        user_profile = await self._parse_user_profile(user_profile_json)
+        user_submission_stat = await self._parse_user_submission_stat(
+            raw_json=raw_json.get("submitStats", {})
+        )
+
+        return UserInfo(
+            user_name=raw_json.get("username", ""),
+            github_url=raw_json.get("githubUrl", ""),
+            twitter_url=raw_json.get("twitterUrl", ""),
+            linkedin_url=raw_json.get("linkedinUrl", ""),
+            user_profile=user_profile,
+            ac_submission=user_submission_stat,
+        )
+        pass
+
     async def health_check(self) -> str:
         payload = {"query": "query { __typename }"}
 
@@ -72,7 +147,7 @@ class LeetCodeAPI:
             logger.error(f"LeetCode API Health check failed: {e}")
         return "LeetCode API is unreachable."
 
-    async def parse_single_problem_response(
+    async def _parse_single_problem_response(
         self, response_json: dict
     ) -> ProblemWithTags:
         """
@@ -106,7 +181,7 @@ class LeetCodeAPI:
             logger.error("Error parsing single problem response: %s", e)
             raise Exception("Error parsing single problem response") from e
 
-    async def parse_daily_problem_response(
+    async def _parse_daily_problem_response(
         self, response_json: dict
     ) -> ProblemWithTags:
         logger.info("Parsing daily problem response")
@@ -118,7 +193,7 @@ class LeetCodeAPI:
             assert isinstance(response_problem, dict)
             response_problem["url"] = response_url
             logger.debug(f"Raw daily problem: {response_problem}")
-            problem_with_tags = await self.parse_single_problem_response(
+            problem_with_tags = await self._parse_single_problem_response(
                 response_problem
             )
             logger.debug(f"Parsed Daily Problem: {problem_with_tags.problem}")
@@ -130,52 +205,12 @@ class LeetCodeAPI:
             logger.error("Error parsing daily problem response: %s", e)
             raise Exception("Error parsing daily problem response") from e
 
-    async def parse_all_problem_response(
-        self, response_json: dict
-    ) -> Dict[int, ProblemWithTags]:
-        """
-        Parses the problem response from the LeetCode API and returns a mapping of problem IDs to a dictionary.
-        The dictionary contains the Problem object and its set of TopicTags, with key being the problem_id.
-        Very Expensive!
-        """
-        result: Dict[int, ProblemWithTags] = {}
-        # logger.debug("All Problems Response: %s", response_json)
-        logger.info("Parsing all problem responses")
-        problem_data = [
-            item.get("data", {}) for item in response_json if isinstance(item, dict)
-        ]
-
-        for item in problem_data:
-            raw_problem_object = item.get("question", {})
-            try:
-                assert isinstance(raw_problem_object, dict) and raw_problem_object
-                problem_with_tags = await self.parse_single_problem_response(
-                    response_json=raw_problem_object
-                )
-                result[problem_with_tags.problem.problem_frontend_id] = (
-                    problem_with_tags
-                )
-            except AssertionError as e:
-                raise Exception(
-                    "Raw problem object is not a dictionary or is empty"
-                ) from e
-            except Exception as e:
-                logger.error(
-                    "Error parsing problem ID %s: %s",
-                    raw_problem_object.get("questionId", 0),
-                    e,
-                )
-                raise Exception("Error parsing all problem response") from e
-
-        logger.debug("Parsed All Problems: %s", result)
-        return result
-
     async def _parse_all_problem_dict(
         self, temp_questions: Dict[int, dict]
     ) -> Dict[int, ProblemWithTags]:
         logger.info("Parsing dictionary of all problems")
         return {
-            key: await self.parse_single_problem_response(val)
+            key: await self._parse_single_problem_response(val)
             for key, val in temp_questions.items()
         }
 
@@ -270,14 +305,14 @@ class LeetCodeAPI:
         )
         logger.info("Fetched daily problem successfully")
         logger.debug("Daily Problem JSON: %s", validated_response_json)
-        return await self.parse_daily_problem_response(
+        return await self._parse_daily_problem_response(
             validated_response_json["data"]["activeDailyCodingChallengeQuestion"]
         )
 
     async def search_problem(self, qry: str):
         pass
 
-    async def user_info(self, username: str) -> dict:
+    async def user_info(self, username: str) -> UserInfo:
         logger.info(f"Fetching user info for username {username}")
 
         cur_frame = inspect.currentframe()
@@ -292,12 +327,17 @@ class LeetCodeAPI:
             json={"query": query, "variables": {"username": username}},
         )
         logger.info(f"Fetched user info for username {username} successfully")
-        return await self._validate_response(
+        validated_response_json = await self._validate_response(
             response,
             f"Failed to fetch user info with username {username}",
         )
+        return await self._parse_user_info(
+            validated_response_json["data"]["matchedUser"]
+        )
 
-    async def user_submission(self, username: str, limit: int = 20) -> dict:
+    async def user_submission(
+        self, username: str, limit: int = 20
+    ) -> List[UserSubmission]:
         logger.info(f"Fetching user submissions for username {username}")
 
         cur_frame = inspect.currentframe()
@@ -315,7 +355,12 @@ class LeetCodeAPI:
             json={"query": query, "variables": {"username": username, "limit": limit}},
         )
         logger.info(f"Fetched user submissions for username {username} successfully")
-        return await self._validate_response(
+        validated_response_json = await self._validate_response(
             response,
             f"Failed to fetch user submissions with username {username}",
+        )
+        logger.debug(f"user submission {validated_response_json}")
+
+        return await self._parse_recent_submission_list(
+            validated_response_json["data"]["recentSubmissionList"]
         )

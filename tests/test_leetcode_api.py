@@ -158,7 +158,8 @@ async def test_fetch_all_problems_success(
 
 @pytest.mark.asyncio
 async def test_user_info_success(leetcode_api):
-    mock_data = {"username": "testuser", "ranking": 100}
+    mock_data = {"username": "testuser", "ranking": 100, "github_url": ""}
+    mock_data = {"data": {"matchedUser": mock_data}}
 
     mock_response = AsyncMock()
     mock_response.status = 200
@@ -166,12 +167,13 @@ async def test_user_info_success(leetcode_api):
     leetcode_api.session.post = AsyncMock(return_value=mock_response)
 
     info = await leetcode_api.user_info("testuser")
-    assert info == mock_data
+    assert info.user_name == "testuser"
+    assert info.github_url == ""
 
 
 @pytest.mark.asyncio
 async def test_user_submission_success(leetcode_api):
-    mock_data = {"submissions": []}
+    mock_data = {"data": {"recentSubmissionList": []}}
 
     mock_response = AsyncMock()
     mock_response.status = 200
@@ -179,4 +181,4 @@ async def test_user_submission_success(leetcode_api):
     leetcode_api.session.post = AsyncMock(return_value=mock_response)
 
     submissions = await leetcode_api.user_submission("testuser")
-    assert submissions == mock_data
+    assert submissions == []
