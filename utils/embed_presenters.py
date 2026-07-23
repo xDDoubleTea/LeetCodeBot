@@ -9,7 +9,7 @@ from discord.ext import commands
 from config.constants import PREVIEW_LEN
 
 from db.problem import Problem, TopicTags
-from models.leetcode import ProblemDifficulity
+from models.leetcode import ProblemDifficulity, UserInfo
 from utils.embed_utils import create_themed_embed
 
 logger = logging.getLogger(__name__)
@@ -26,41 +26,34 @@ def get_difficulty_str_repr(difficulty_db_repr: int) -> str:
         return "Unknown"
 
 
-def get_user_info_embed(username: str, info: dict, bot: commands.Bot | Client) -> Embed:
+def get_user_info_embed(
+    username: str, info: UserInfo, bot: commands.Bot | Client
+) -> Embed:
     """
     Returns the embed for leetcode user.
     """
     embed = create_themed_embed(title=f"LeetCode User: {username}", client=bot)
     embed.url = f"https://leetcode.com/u/{username}/"
-    third_party_links = ["githubUrl", "twitterUrl", "linkedinUrl"]
-    value = "\n".join(
-        map(
-            str,
-            filter(lambda t: t, [info.get(key) for key in third_party_links]),
+    third_party_links = [info.github_url, info.twitter_url, info.linkedin_url]
+    value = "\n".join(link for link in third_party_links if link)
+    ac_submission = info.ac_submission
+    if ac_submission and ac_submission.difficulity.lower() == "all":
+        embed.add_field(
+            name="AC Submissions",
+            value=f"Difficulty : All\nSovled: {ac_submission.ac_submission_count}\nTotal submitted and AC: {ac_submission.total_submissions_and_ac_count}",
+            inline=False,
         )
-    )
-    submissions = info.get("submitStats")
-    assert submissions
-    ac_submission = submissions.get("acSubmissionNum")
-    if ac_submission:
-        for sub in ac_submission:
-            if sub.get("difficulty").lower() == "all":
-                embed.add_field(
-                    name="AC Submissions",
-                    value=f"Difficulty : All\nSovled: {sub.get('count')}\nTotal submitted and AC: {sub.get('submissions')}",
-                    inline=False,
-                )
-                break
 
     embed.add_field(name="Other Links", value=value, inline=False)
-    profile = info.get("profile")
+    profile = info.user_profile
     assert profile
-    embed.set_thumbnail(url=profile.get("userAvatar"))
-    embed.add_field(name="Country", value=profile.get("countryName"), inline=True)
-    embed.description = f"User's About me: {profile.get('aboutMe')}"
-    company = profile.get("company", "")
-    job_title = profile.get("jobTitle", "")
-    school = profile.get("school", "")
+    embed.set_thumbnail(url=profile.user_avatar)
+    embed.add_field(name="Country", value=profile.country_name, inline=True)
+    embed.description = f"User's About me: {profile.about_me}"
+
+    company = profile.company
+    job_title = profile.job_title
+    school = profile.school
     if company:
         value = company
         if job_title:
@@ -68,7 +61,8 @@ def get_user_info_embed(username: str, info: dict, bot: commands.Bot | Client) -
         embed.add_field(name="Company", value=value, inline=False)
     if school:
         embed.add_field(name="School", value=school, inline=True)
-    websites = profile.get("websites")
+
+    websites = profile.websites
     if websites:
         embed.add_field(name="Websites", value="\n".join(websites), inline=False)
     return embed

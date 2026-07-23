@@ -1,0 +1,14 @@
+query recentSubmissions($username: String!, $limit: Int) {
+  recentSubmissionList(username: $username, limit: $limit) {
+    title
+    titleSlug
+    timestamp
+    statusDisplay
+    url
+    langName
+    runtime
+    isPending
+    memory
+    frontendId
+  }
+}
