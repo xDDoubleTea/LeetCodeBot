@@ -58,5 +58,3 @@ If you prefer GUI and you use vscode, you can use the built-in `Clone repository
 - discord.py
 - sqlalchemy
 - sqlite
-
-- [noworneverev/leetcode-api: LeetCode API - LeetCode questions sorted by likes - Daily updated LeetCode database](https://github.com/noworneverev/leetcode-api/tree/main)
