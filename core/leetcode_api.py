@@ -1,5 +1,6 @@
 import asyncio
 import inspect
+import random
 import logging
 from typing import Dict, List, Set
 from pathlib import Path
@@ -140,7 +141,7 @@ class LeetCodeAPI:
             ) as response:
                 logger.info(f"LeetCode API Health Check Status: {response.status}")
                 if response.status == 200:
-                    return "LeetCode API is up."
+                    return f"LeetCode API is {'||never gonna give you||' if random.randint(0, 100) % 2 == 0 else ''} up."
                 else:
                     return f"LeetCode API is down. Status: {response.status}"
         except Exception as e:
