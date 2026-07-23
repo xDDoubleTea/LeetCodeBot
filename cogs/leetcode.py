@@ -298,7 +298,6 @@ class LeetCode(commands.Cog):
             format_page=self.format_tags,
             ephemeral=False,
             items_per_page=15,
-            select_placeholder="Select a problem to open/create thread...",
         )
         await view.send_initial_message(interaction=interaction, followup=True)
 
