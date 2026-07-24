@@ -111,6 +111,7 @@ class LeetCode(commands.Cog):
                 name=f"{submission.frontend_id}. {submission.title} submission status",
                 value=f"""
 - [View submission on LeetCode]({submission.url})
+- [View Problem](https://leetcode.com/problems/{submission.title_slug})
 - Language: {submission.lang_name}
 - Time: <t:{submission.timestamp}:f>
 - Runtime: {submission.runtime}
