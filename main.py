@@ -60,6 +60,10 @@ class LeetCodeBot(commands.Bot):
             leetcode_problem_manager=self.leetcode_problem_manger,
         )
 
+        logger.info("Loading Graphql queries.")
+        self.leetcode_api._load_graphql_queries()
+        logger.info("Graphql queries loaded.")
+
         logger.info("Loading cogs...")
         for cog in os.listdir("cogs"):
             if cog.endswith(".py") and not cog.startswith("_"):
@@ -73,10 +77,6 @@ class LeetCodeBot(commands.Bot):
         all_topics_dict = await self.leetcode_problem_manger.get_all_topics_from_db()
         self.tag_cache = [topic.tag_name for topic in all_topics_dict.values()]
         logger.info("Caches initialized.")
-
-        logger.info("Loading Graphql queries.")
-        self.leetcode_api._load_graphql_queries()
-        logger.info("Graphql queries loaded.")
 
     async def close(self) -> None:
         await super().close()
