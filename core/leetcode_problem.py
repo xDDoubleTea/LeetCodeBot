@@ -30,6 +30,7 @@ class LeetCodeProblemManager:
     ) -> None:
         self.all_problem_cache: Dict[int, Problem] = dict()
         self.free_problem_cache: Dict[int, Problem] = dict()
+        self.daily_problem: ProblemWithTags | None
         self.leetcode_api: LeetCodeAPI = leetcode_api
         self.database_manager: DatabaseManager = database_manager
 
@@ -113,15 +114,22 @@ class LeetCodeProblemManager:
         """
         try:
             problems = await self.get_problems_from_db()
+
+            self.daily_problem = await self.fetch_daily_problem()
             logger.info("Initializing problem cache with %d problems.", len(problems))
-            self.all_problem_cache = {
+
+            all_problem_cache_tmp = {
                 problem.problem_frontend_id: problem for problem in problems
             }
-            self.free_problem_cache = {
+
+            free_problem_cache_tmp = {
                 problem.problem_frontend_id: problem
                 for problem in problems
                 if not problem.premium
             }
+
+            self.all_problem_cache = all_problem_cache_tmp
+            self.free_problem_cache = free_problem_cache_tmp
         except Exception as e:
             logger.error("Error initializing cache", exc_info=e)
             raise Exception(f"Failed to initialize cache: {e}")
@@ -153,21 +161,7 @@ class LeetCodeProblemManager:
             )
             await self._bulk_upsert_topic_tags(all_topic_tags)
             await self._create_problem_tag_associations(api_problems)
-            problems = await self.get_problems_from_db()
-            logger.info("Rebuilding problem cache...")
-
-            all_problem_cache_tmp = {
-                problem.problem_frontend_id: problem for problem in problems
-            }
-
-            free_problem_cache_tmp = {
-                problem.problem_frontend_id: problem
-                for problem in problems
-                if not problem.premium
-            }
-
-            self.all_problem_cache = all_problem_cache_tmp
-            self.free_problem_cache = free_problem_cache_tmp
+            await self.init_cache()
 
             logger.info("Problem cache refresh completed.")
         except Exception as e:
@@ -334,7 +328,12 @@ class LeetCodeProblemManager:
             )
             raise Exception(e)
 
-    async def get_daily_problem(
+    async def get_daily_problem(self) -> ProblemWithTags:
+        if self.daily_problem is not None:
+            return self.daily_problem
+        return await self.fetch_daily_problem()
+
+    async def fetch_daily_problem(
         self,
     ) -> ProblemWithTags:
         """

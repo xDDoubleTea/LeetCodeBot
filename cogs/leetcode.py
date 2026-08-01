@@ -16,10 +16,9 @@ from discord import (
 from discord.channel import ForumChannel, ThreadWithMessage
 from discord.ext import commands
 
-from config.constants import THEME_COLOR, PREVIEW_LEN, tz
+from config.constants import THEME_COLOR, PREVIEW_LEN, LEETCODE_API_REFRESH_TIME
 from config.secrets import debug
-from core.leetcode_problem import ProblemNotFound
-from db.problem import Problem, TopicTags
+from db.problem import Problem
 from main import LeetCodeBot
 from models.leetcode import (
     ProblemDifficulity,
@@ -58,9 +57,8 @@ class LeetCode(commands.Cog):
         self.leetcode_problem_manager = bot.leetcode_problem_manger
         self.leetcode_api = bot.leetcode_api
         self.problem_threads_manager = bot.problem_threads_manager
-        self.leetcode_api_refresh_time = datetime.time(hour=8, minute=5, tzinfo=tz)
 
-    @tasks.loop(hours=24, name="daily_cache_refresh")
+    @tasks.loop(time=LEETCODE_API_REFRESH_TIME, name="daily_cache_refresh")
     async def daily_cache_refresh(self) -> None:
         logger.info("Refreshing LeetCode problems cache...")
         await self.leetcode_problem_manager.refresh_cache()

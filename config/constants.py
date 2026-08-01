@@ -4,6 +4,7 @@ import datetime
 command_prefix = ">"
 
 tz = datetime.timezone(datetime.timedelta(hours=8))
+LEETCODE_API_REFRESH_TIME = datetime.time(hour=8, minute=5, tzinfo=tz)
 MY_GUILD = discord.Object(1039906085626196079)  # Replace with your guild ID
 PREVIEW_LEN = 1000
 
