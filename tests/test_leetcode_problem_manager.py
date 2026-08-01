@@ -218,7 +218,7 @@ async def test_refresh_cache_success(manager, mock_db_session):
     assert manager.all_problem_cache[1] == p1
 
     actual_calls = mock_db_session.execute.call_args_list
-    assert len(actual_calls) == 5
+    assert len(actual_calls) == 6
 
     # 1. Problem bulk upsert
     problem_upsert_data = actual_calls[0].args[1]

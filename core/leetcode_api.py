@@ -155,7 +155,7 @@ class LeetCodeAPI:
         Parses the problem response from the LeetCode API and returns a Problem object.
         Not that Expensive, but don't use it too often, especially in loops.
         """
-        logger.info("Parsing single problem response")
+        logger.debug("Parsing single problem response")
         try:
             logger.debug("Single Problem Response: %s", response_json)
             problem = Problem(
