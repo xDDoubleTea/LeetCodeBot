@@ -30,7 +30,7 @@ class LeetCodeProblemManager:
     ) -> None:
         self.all_problem_cache: Dict[int, Problem] = dict()
         self.free_problem_cache: Dict[int, Problem] = dict()
-        self.daily_problem: ProblemWithTags | None
+        self.daily_problem: ProblemWithTags | None = None
         self.leetcode_api: LeetCodeAPI = leetcode_api
         self.database_manager: DatabaseManager = database_manager
 
