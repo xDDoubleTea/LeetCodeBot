@@ -8,7 +8,7 @@ from sqlalchemy.dialects.sqlite import insert as sqlite_upsert
 from sqlalchemy.sql import select
 
 from core.leetcode_problem import LeetCodeProblemManager
-from db.database_manager import DatabaseManager
+from db.async_db_manager import AsyncDatabaseManager
 from db.problem import Problem, TopicTags
 from db.problem_threads import ProblemThreads
 from db.thread_channel import GuildForumChannel
@@ -26,41 +26,48 @@ logger = logging.getLogger(__name__)
 class ProblemThreadsManager:
     def __init__(
         self,
-        database_manager: DatabaseManager,
+        async_database_manager: AsyncDatabaseManager,
         leetcode_problem_manager: LeetCodeProblemManager,
     ) -> None:
-        self.database_manager: DatabaseManager = database_manager
+        self.async_database_manager: AsyncDatabaseManager = async_database_manager
         self.leetcode_problem_manager: LeetCodeProblemManager = leetcode_problem_manager
         self.problem_threads: Dict[int, ProblemThreads] = {}
         self.forum_channels: Dict[int, GuildForumChannel] = {}
 
     async def init_cache(self):
-        with self.database_manager as db:
+        async with self.async_database_manager as db:
             logger.info("Initializing ProblemThreadsManager Cache...")
             stmt = select(ProblemThreads)
-            result = db.execute(stmt).scalars().all()
-            logger.info(f"Loaded {len(result)} problem threads from the database.")
-            logger.debug(result)
-            for problem_thread in result:
+            result = await db.scalars(stmt)
+            scalar_result = result.all()
+            logger.info(
+                f"Loaded {len(scalar_result)} problem threads from the database."
+            )
+            logger.debug(scalar_result)
+            for problem_thread in scalar_result:
                 self.problem_threads[problem_thread.thread_id] = problem_thread
             logger.info("ProblemThreadsManager Cache initialized.")
             logger.info("Initializing GuildForumChannels Cache...")
             stmt = select(GuildForumChannel)
-            result = db.execute(stmt).scalars().all()
-            logger.info(f"Loaded {len(result)} forum channels from the database.")
-            logger.debug(result)
-            for forum_channel in result:
+            result = await db.scalars(stmt)
+            scalar_result = result.all()
+            logger.info(
+                f"Loaded {len(scalar_result)} forum channels from the database."
+            )
+            logger.debug(scalar_result)
+            for forum_channel in scalar_result:
                 self.forum_channels[forum_channel.guild_id] = forum_channel
 
     async def add_forum_channel_to_db(self, guild_id: int, channel_id: int) -> None:
-        with self.database_manager as db:
+        async with self.async_database_manager as db:
             logger.info(
                 f"Adding/Updating forum channel for guild {guild_id} with channel {channel_id}."
             )
             stmt = select(GuildForumChannel).where(
                 GuildForumChannel.guild_id == guild_id
             )
-            forum_channel = db.execute(stmt).scalars().first()
+            result = await db.scalars(stmt)
+            forum_channel = result.first()
             logger.debug(f"Existing forum channel: {forum_channel}")
             if forum_channel:
                 forum_channel.channel_id = channel_id
@@ -69,7 +76,7 @@ class ProblemThreadsManager:
                     guild_id=guild_id, channel_id=channel_id
                 )
             db.add(forum_channel)
-            db.commit()
+            await db.commit()
             self.forum_channels[guild_id] = forum_channel
 
     async def get_forum_channel(self, guild_id: int) -> GuildForumChannel | None:
@@ -79,11 +86,12 @@ class ProblemThreadsManager:
         if res := self.forum_channels.get(guild_id, None):
             return res
 
-        with self.database_manager as db:
+        async with self.async_database_manager as db:
             stmt = select(GuildForumChannel).where(
                 GuildForumChannel.guild_id == guild_id
             )
-            forum_channel = db.execute(stmt).scalars().first()
+            result = await db.scalars(stmt)
+            forum_channel = result.first()
             if forum_channel:
                 return forum_channel
         return None
@@ -106,9 +114,10 @@ class ProblemThreadsManager:
         if res := self.problem_threads.get(thread_id, None):
             return res
 
-        with self.database_manager as db:
+        async with self.async_database_manager as db:
             stmt = select(ProblemThreads).where(ProblemThreads.thread_id == thread_id)
-            problem_thread = db.execute(stmt).scalars().first()
+            result = await db.scalars(stmt)
+            problem_thread = result.first()
             if problem_thread:
                 return problem_thread
         logger.debug(f"Problem thread for thread ID {thread_id} not found.")
@@ -120,7 +129,7 @@ class ProblemThreadsManager:
         logger.debug(
             f"Fetching problem thread for problem ID {problem_frontend_id} in guild {guild_id} from database."
         )
-        with self.database_manager as db:
+        async with self.async_database_manager as db:
             problem_with_tags = (
                 await self.leetcode_problem_manager.get_problem_with_frontend_id(
                     problem_frontend_id
@@ -133,7 +142,8 @@ class ProblemThreadsManager:
             stmt = select(GuildForumChannel).where(
                 GuildForumChannel.guild_id == guild_id
             )
-            forum_channel = db.execute(stmt).scalars().first()
+            result = await db.scalars(stmt)
+            forum_channel = result.first()
             if not forum_channel:
                 return None
 
@@ -141,7 +151,8 @@ class ProblemThreadsManager:
                 ProblemThreads.problem_db_id == problem_with_tags.id,
                 ProblemThreads.forum_channel_db_id == forum_channel.id,
             )
-            problem_thread = db.execute(stmt).scalars().first()
+            result = await db.scalars(stmt)
+            problem_thread = result.first()
             logger.debug(problem_thread)
             if problem_thread:
                 return problem_thread
@@ -153,7 +164,7 @@ class ProblemThreadsManager:
         logger.info(
             f"Creating problem thread in DB for problem ID {problem_frontend_id} in guild {guild_id} with thread ID {thread_id}."
         )
-        with self.database_manager as db:
+        async with self.async_database_manager as db:
             problem_threads_instance = await self.create_thread_instance(
                 problem_frontend_id=problem_frontend_id,
                 guild_id=guild_id,
@@ -202,7 +213,7 @@ class ProblemThreadsManager:
             logger.warning("No problem threads to upsert.")
             raise ValueError("No problem threads to upsert.")
         logger.info(f"Bulk upserting {len(problem_threads)} problem threads to DB.")
-        with self.database_manager as db:
+        async with self.async_database_manager as db:
             logger.debug(
                 f"Problem threads to upsert: {[pt.to_dict() for pt in problem_threads.values()]}"
             )
@@ -214,19 +225,22 @@ class ProblemThreadsManager:
                     "forum_channel_db_id": upsert_stmt.excluded.forum_channel_db_id,
                 },
             )
-            db.execute(upsert_stmt, [pt.to_dict() for pt in problem_threads.values()])
+            await db.execute(
+                upsert_stmt, [pt.to_dict() for pt in problem_threads.values()]
+            )
 
         await self.init_cache()
 
     async def delete_thread_from_db(self, thread_id: int) -> None:
         logger.info(f"Deleting problem thread with thread ID {thread_id} from DB.")
-        with self.database_manager as db:
+        async with self.async_database_manager as db:
             stmt = select(ProblemThreads).where(ProblemThreads.thread_id == thread_id)
-            problem_thread = db.execute(stmt).scalars().first()
+            stmt_exec_result = await db.scalars(stmt)
+            problem_thread = stmt_exec_result.first()
             if problem_thread:
                 logger.debug(f"Deleting problem thread: {problem_thread}")
-                db.delete(problem_thread)
-                db.commit()
+                await db.delete(problem_thread)
+                await db.commit()
                 if thread_id in self.problem_threads:
                     del self.problem_threads[thread_id]
 
