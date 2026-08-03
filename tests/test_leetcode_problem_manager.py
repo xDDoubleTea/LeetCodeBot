@@ -1,11 +1,11 @@
 import logging
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMixin, MagicMock
 
 import pytest
 
 from core.leetcode_api import LeetCodeAPI
 from core.leetcode_problem import LeetCodeProblemManager
-from db.database_manager import DatabaseManager
+from db.async_db_manager import AsyncDatabaseManager
 from db.problem import (
     Problem,
     TopicTags,
@@ -21,23 +21,25 @@ def mock_api():
 @pytest.fixture
 def mock_db_session():
     session = MagicMock()
-    session.execute.return_value.scalars.return_value.all.return_value = []  # Default empty list for all()
-    session.execute.return_value.scalars.return_value.first.return_value = (
-        None  # Default None for first()
-    )
-    session.query.return_value.filter_by.return_value.first.return_value = (
-        None  # Default None for query().filter_by().first()
-    )
-    session.query.return_value.all.return_value = []  # Default empty list for query().all()
+    mock_execute_result = MagicMock()
+    mock_scalars_result = MagicMock()
 
+    session.execute = AsyncMock(return_value=mock_execute_result)
+    session.scalars = AsyncMock(return_value=mock_scalars_result)
+
+    session.commit = AsyncMock()
+    session.refresh = AsyncMock()
+    session.flush = AsyncMock()
+    session.delete = AsyncMock()
+    # session.add stays a plain MagicMock — it's sync on AsyncSession too
     return session
 
 
 @pytest.fixture
 def mock_db_manager(mock_db_session):
-    manager = MagicMock(spec=DatabaseManager)
-    manager.__enter__.return_value = mock_db_session
-    manager.__exit__.return_value = False  # Don't suppress exceptions
+    manager = MagicMock(spec=AsyncDatabaseManager)
+    manager.__aenter__.return_value = mock_db_session
+    manager.__aexit__.return_value = False  # Don't suppress exceptions
     return manager
 
 
@@ -78,7 +80,7 @@ async def test_get_daily_problem_in_cache(manager):
 
 
 @pytest.mark.asyncio
-async def test_get_daily_problem_in_db_not_cache(manager, mock_db_session):
+async def test_get_daily_problem_in_db_not_in_cache(manager, mock_db_session):
     api_problem_obj = Problem(
         problem_frontend_id=200,
         title="Daily API",
@@ -104,9 +106,7 @@ async def test_get_daily_problem_in_db_not_cache(manager, mock_db_session):
         premium=False,
     )
 
-    mock_db_session.execute.return_value.scalars.return_value.first.return_value = (
-        db_problem
-    )
+    mock_db_session.scalars.return_value.first.return_value = db_problem
 
     result = await manager.get_daily_problem()
 
@@ -133,9 +133,7 @@ async def test_get_daily_problem_fetch_new(manager, mock_db_session):
 
     assert 300 not in manager.all_problem_cache
 
-    mock_db_session.execute.return_value.scalars.return_value.first.return_value = None
-
-    mock_db_session.query.return_value.filter_by.return_value.first.return_value = None
+    mock_db_session.scalars.return_value.first.return_value = None
 
     # Mocking the problem added to db.add
     mock_db_session.add.side_effect = lambda x: setattr(
@@ -202,14 +200,25 @@ async def test_refresh_cache_success(manager, mock_db_session):
 
     manager.leetcode_api.fetch_all_problems.return_value = api_data
 
-    mock_db_session.query.return_value.all.side_effect = [
-        [p1, p2],  # For db_problems
-        [t1, t2],  # For db_tags
+    mock_db_session.scalars.return_value.all.side_effect = [
+        [p1, p2],
+        [t1, t2],
+        [p1, p2],
     ]
-    mock_db_session.execute.return_value.scalars.return_value.all.return_value = [
-        p1,
-        p2,
-    ]
+
+    api_problem_obj = Problem(
+        problem_frontend_id=300,
+        problem_id=3000,
+        title="New Daily",
+        difficulty=0,
+        url="http://example.com/new",
+        description="desc",
+        premium=False,
+    )
+    tags = {TopicTags(tag_name="Tag1")}
+    manager.leetcode_api.fetch_daily.return_value = ProblemWithTags(
+        api_problem_obj, tags
+    )
 
     await manager.refresh_cache()
 
@@ -217,26 +226,29 @@ async def test_refresh_cache_success(manager, mock_db_session):
     assert 2 in manager.all_problem_cache
     assert manager.all_problem_cache[1] == p1
 
-    actual_calls = mock_db_session.execute.call_args_list
-    assert len(actual_calls) == 6
+    execute_calls = mock_db_session.execute.call_args_list
+    assert len(execute_calls) == 4
+
+    scalars_calls = mock_db_session.scalars.call_args_list
+    assert len(scalars_calls) == 4
 
     # 1. Problem bulk upsert
-    problem_upsert_data = actual_calls[0].args[1]
+    problem_upsert_data = execute_calls[0].args[1]
     assert len(problem_upsert_data) == 2
     assert problem_upsert_data[0]["problem_frontend_id"] in (1, 2)
     assert problem_upsert_data[1]["problem_frontend_id"] in (1, 2)
 
     # 2. Topic Tags bulk upsert (Order independent)
-    tag_upsert_data = actual_calls[1].args[1]
+    tag_upsert_data = execute_calls[1].args[1]
     assert len(tag_upsert_data) == 2
     assert {"tag_name": "T1", "id": 500} in tag_upsert_data
     assert {"tag_name": "T2", "id": 501} in tag_upsert_data
 
     # 3. Delete old associations (Statement only, no arguments)
-    assert len(actual_calls[2].args) == 1
+    assert len(execute_calls[2].args) == 1
 
     # 4. Insert new associations (Order independent)
-    assoc_upsert_data = actual_calls[3].args[1]
+    assoc_upsert_data = execute_calls[3].args[1]
     assert len(assoc_upsert_data) == 2
     assert {"problem_id": 100, "tag_id": 500} in assoc_upsert_data
     assert {"problem_id": 101, "tag_id": 501} in assoc_upsert_data
