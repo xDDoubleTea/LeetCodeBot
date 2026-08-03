@@ -10,7 +10,7 @@ from sqlalchemy.dialects.sqlite import insert as sqlite_upsert
 from sqlalchemy.orm import selectinload
 
 from core.leetcode_api import LeetCodeAPI
-from db.database_manager import DatabaseManager
+from db.async_db_manager import AsyncDatabaseManager
 from db.problem import Problem, TopicTags, problem_tags_association
 from models.leetcode import ProblemDifficulity, ProblemWithTags
 from utils.embed_presenters import get_problem_desc_embed
@@ -26,16 +26,16 @@ class LeetCodeProblemManager:
     def __init__(
         self,
         leetcode_api: LeetCodeAPI,
-        database_manager: DatabaseManager,
+        async_database_manager: AsyncDatabaseManager,
     ) -> None:
         self.all_problem_cache: Dict[int, Problem] = dict()
         self.free_problem_cache: Dict[int, Problem] = dict()
         self.daily_problem: ProblemWithTags | None = None
         self.leetcode_api: LeetCodeAPI = leetcode_api
-        self.database_manager: DatabaseManager = database_manager
+        self.async_database_manager: AsyncDatabaseManager = async_database_manager
 
     async def _bulk_upsert_problems(self, api_problems: Dict[int, Problem]) -> None:
-        with self.database_manager as db:
+        async with self.async_database_manager as db:
             logger.info(f"Upserting {len(api_problems)} problems into the database.")
             mappings = [problem.to_dict() for problem in api_problems.values()]
             logger.debug(f"Problem mappings: {mappings[:2]} ...")
@@ -51,11 +51,11 @@ class LeetCodeProblemManager:
                     "premium": insert_stmt.excluded.premium,
                 },
             )
-            db.execute(insert_stmt, mappings)
+            await db.execute(insert_stmt, mappings)
             logger.info("Bulk upsert of problems completed.")
 
     async def _bulk_upsert_topic_tags(self, topic_tags: Set[TopicTags]) -> None:
-        with self.database_manager as db:
+        async with self.async_database_manager as db:
             logger.info(f"Upserting {len(topic_tags)} topic tags into the database.")
             insert_stmt = sqlite_upsert(TopicTags)
             mappings = [tag.to_dict() for tag in topic_tags]
@@ -63,7 +63,7 @@ class LeetCodeProblemManager:
             insert_stmt = insert_stmt.on_conflict_do_nothing(
                 index_elements=["tag_name"],
             )
-            db.execute(insert_stmt, mappings)
+            await db.execute(insert_stmt, mappings)
             logger.info("Bulk upsert of topic tags completed.")
 
     async def _create_problem_tag_associations(
@@ -71,23 +71,31 @@ class LeetCodeProblemManager:
         all_api_problems_data: Dict[int, ProblemWithTags],
     ) -> None:
         """Creates associations based on the API data."""
-        with self.database_manager as db:
+        async with self.async_database_manager as db:
             logger.info("Creating problem-tag associations.")
-            db_problems = {p.problem_frontend_id: p.id for p in db.query(Problem).all()}
-            db_tags = {t.tag_name: t.id for t in db.query(TopicTags).all()}
-            logger.debug(f"DB Problems: {list(db_problems.items())[:2]} ...")
-            logger.debug(f"DB Tags: {list(db_tags.items())[:2]} ...")
+            db_select_problems = await db.scalars(select(Problem))
+            db_select_tags = await db.scalars(select(TopicTags))
+            db_problem_id_problem_map = {
+                p.problem_frontend_id: p.id for p in db_select_problems.all()
+            }
+            db_tag_name_tags_map = {t.tag_name: t.id for t in db_select_tags.all()}
+            logger.debug(
+                f"DB Problems: {list(db_problem_id_problem_map.items())[:2]} ..."
+            )
+            logger.debug(f"DB Tags: {list(db_tag_name_tags_map.items())[:2]} ...")
             associations = []
             for data in all_api_problems_data.values():
                 data_problem = data.problem
                 data_tags = data.tags
-                problem_db_id = db_problems[int(data_problem.problem_frontend_id)]
+                problem_db_id = db_problem_id_problem_map[
+                    int(data_problem.problem_frontend_id)
+                ]
                 if not problem_db_id:
                     raise Exception(
                         f"Problem ID {data_problem.problem_frontend_id} not found in DB."
                     )
                 for tag in data_tags:
-                    tag_db_id = db_tags.get(tag.tag_name)
+                    tag_db_id = db_tag_name_tags_map.get(tag.tag_name)
                     if not tag_db_id:
                         raise Exception(f"Tag {tag.tag_name} not found in DB.")
 
@@ -97,15 +105,15 @@ class LeetCodeProblemManager:
             logger.debug(f"Problem-Tag Associations: {associations[:2]} ...")
             if associations:
                 # First, clear all existing associations to ensure a clean slate
-                db.execute(problem_tags_association.delete())
+                await db.execute(problem_tags_association.delete())
 
                 # Use the imported problem_tags_association Table object
                 insert_stmt = sqlite_upsert(
                     problem_tags_association
                 ).on_conflict_do_nothing(index_elements=["problem_id", "tag_id"])
-                db.execute(insert_stmt, associations)
+                await db.execute(insert_stmt, associations)
             logger.info("Problem-tag associations created.")
-            db.commit()
+            await db.commit()
 
     async def init_cache(self):
         """
@@ -169,17 +177,18 @@ class LeetCodeProblemManager:
             raise Exception(e)
 
     async def get_problems_from_db(self) -> Sequence[Problem]:
-        with self.database_manager as db:
+        async with self.async_database_manager as db:
             logger.info("Fetching all problems from the database.")
             stmt = select(Problem).options(selectinload(Problem.tags))
-            results = db.execute(stmt).scalars().all()
-            return results
+            results = await db.scalars(stmt)
+            return results.all()
 
     async def get_all_topics_from_db(self) -> Dict[int, TopicTags]:
-        with self.database_manager as db:
+        async with self.async_database_manager as db:
             stmt = select(TopicTags)
             logger.info("Fetching all topic tags from the database.")
-            all_topics = db.execute(stmt).scalars().all()
+            result = await db.scalars(stmt)
+            all_topics = result.all()
             return {topic.id: topic for topic in all_topics}
 
     async def get_problems_with_tag_name(self, tag_name: str) -> Sequence[Problem]:
@@ -194,8 +203,9 @@ class LeetCodeProblemManager:
         stmt = select(Problem).options(selectinload(Problem.tags)).where(*criteria)
         logger.info("Fetching multiple problems with custom criteria")
 
-        with self.database_manager as db:
-            problems = db.execute(stmt).scalars().all()
+        async with self.async_database_manager as db:
+            result = await db.scalars(stmt)
+            problems = result.all()
             for problem in problems:
                 self.all_problem_cache[problem.problem_frontend_id] = problem
                 if not problem.premium:
@@ -231,8 +241,10 @@ class LeetCodeProblemManager:
             )
 
         stmt = stmt.options(selectinload(Problem.tags))
-        with self.database_manager as db:
-            if problem := db.execute(stmt).scalars().first():
+        async with self.async_database_manager as db:
+            result = await db.scalars(stmt)
+            if problem := result.first():
+                logger.debug(f"Problem object {problem}")
                 self.all_problem_cache[problem.problem_frontend_id] = problem
                 if not problem.premium:
                     self.free_problem_cache[problem.problem_frontend_id] = problem
@@ -254,7 +266,7 @@ class LeetCodeProblemManager:
                 problem_frontend_id=problem_frontend_id
             )
 
-        with self.database_manager as db:
+        async with self.async_database_manager as db:
             logger.info(f"Fetching problem with difficulty {difficulty} from database")
 
             stmt = (
@@ -267,8 +279,8 @@ class LeetCodeProblemManager:
             )
             if not premium:
                 stmt = stmt.where(Problem.premium.is_(False))
-
-            problems = db.execute(stmt).scalars().all()
+            result = await db.scalars(stmt)
+            problems = result.all()
             problem = random.choice(problems)
             return ProblemWithTags(problem, set(problem.tags))
 
@@ -382,31 +394,34 @@ class LeetCodeProblemManager:
     async def add_problem_to_db(
         self, problem: Problem, tags: Set[TopicTags]
     ) -> Problem:
-        with self.database_manager as db:
+        async with self.async_database_manager as db:
             logger.info(f"Adding problem with ID {problem.problem_id} to the database.")
             # Check for existing problem
-            db_problem = (
-                db.query(Problem).filter_by(problem_id=problem.problem_id).first()
+            result = await db.scalars(
+                select(Problem).where(Problem.problem_id == problem.problem_id)
             )
+            db_problem = result.first()
             if not db_problem:
                 db.add(problem)
-                db.flush()  # Flush to get problem.id
+                await db.flush()
                 db_problem = problem
 
             # Handle tags
             logger.info(f"Associating tags with problem ID {db_problem.problem_id}.")
             for tag in tags:
-                db_tag = db.query(TopicTags).filter_by(tag_name=tag.tag_name).first()
+                stmt = select(TopicTags).where(TopicTags.tag_name == tag.tag_name)
+                result = await db.scalars(stmt)
+                db_tag = result.first()
                 if not db_tag:
                     db.add(tag)
-                    db.flush()  # Flush to get tag.id
+                    await db.flush()
                     db_tag = tag
 
                 if db_tag not in db_problem.tags:
                     db_problem.tags.append(db_tag)
 
-            db.commit()
-            db.refresh(db_problem, attribute_names=["tags"])
+            await db.commit()
+            await db.refresh(db_problem, attribute_names=["tags"])
             logger.info(
                 f"Problem with ID {db_problem.problem_id} added/updated successfully."
             )
@@ -430,19 +445,3 @@ class LeetCodeProblemManager:
         return get_problem_desc_embed(
             problem=problem_obj, problem_tags=problem_with_tags.tags, bot=bot
         )
-
-    async def delete_problem_from_db(self, problem_frontend_id: int) -> None:
-        logger.info(
-            f"Deleting problem with frontend ID {problem_frontend_id} from the database."
-        )
-        with self.database_manager as db:
-            db_problem = (
-                db.query(Problem)
-                .filter_by(problem_frontend_id=problem_frontend_id)
-                .first()
-            )
-            if db_problem:
-                db.delete(db_problem)
-                db.commit()
-                if problem_frontend_id in self.all_problem_cache:
-                    del self.all_problem_cache[problem_frontend_id]

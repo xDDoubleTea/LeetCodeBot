@@ -7,8 +7,9 @@ import aiohttp
 import discord
 import re2
 from discord.ext import commands
-from sqlalchemy import create_engine, event
+from sqlalchemy import event
 from sqlalchemy.engine import Engine
+from sqlalchemy.ext.asyncio import create_async_engine
 
 from config.constants import MY_GUILD, command_prefix
 from config.logger import setup_logger
@@ -16,8 +17,8 @@ from config.secrets import DATABASE_URL, bot_token, debug
 from core.leetcode_api import LeetCodeAPI
 from core.leetcode_problem import LeetCodeProblemManager
 from core.problem_threads import ProblemThreadsManager
+from db.async_db_manager import AsyncDatabaseManager
 from db.base import Base
-from db.database_manager import DatabaseManager
 
 logger = logging.getLogger("main")
 setup_logger(log_level=logging.DEBUG if debug else logging.INFO)
@@ -38,22 +39,26 @@ class LeetCodeBot(commands.Bot):
     def __init__(self):
         intents = discord.Intents.all()
         super().__init__(command_prefix=command_prefix, intents=intents)
-        self.engine = create_engine(DATABASE_URL, echo=debug, hide_parameters=True)
+        self.engine = create_async_engine(
+            DATABASE_URL, echo=debug, hide_parameters=True
+        )
         self.tag_cache: list[str] = []
-        self.database_manager: DatabaseManager
+        self.database_manager: AsyncDatabaseManager
         self.leetcode_api: LeetCodeAPI
         self.leetcode_problem_manger: LeetCodeProblemManager
         self.problem_threads_manager: ProblemThreadsManager
         self.session: aiohttp.ClientSession
 
     async def setup_hook(self) -> None:
-        self.database_manager: DatabaseManager = DatabaseManager(self, self.engine)
+        self.database_manager: AsyncDatabaseManager = AsyncDatabaseManager(
+            self, self.engine
+        )
 
         self.session = aiohttp.ClientSession()
         self.leetcode_api: LeetCodeAPI = LeetCodeAPI(session=self.session)
         self.leetcode_problem_manger: LeetCodeProblemManager = LeetCodeProblemManager(
             leetcode_api=self.leetcode_api,
-            database_manager=self.database_manager,
+            async_database_manager=self.database_manager,
         )
         self.problem_threads_manager: ProblemThreadsManager = ProblemThreadsManager(
             self.database_manager,
@@ -80,7 +85,7 @@ class LeetCodeBot(commands.Bot):
 
     async def close(self) -> None:
         await super().close()
-        self.engine.dispose()
+        await self.engine.dispose()
 
     async def on_ready(self):
         self.tree.copy_global_to(guild=MY_GUILD)
@@ -117,7 +122,9 @@ async def main():
             sig, lambda s=sig: asyncio.create_task(shutdown(s, loop))
         )
 
-    Base.metadata.create_all(bind=bot.engine)
+    async with bot.engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
     try:
         await bot.start(token=bot_token)
     except asyncio.CancelledError:
