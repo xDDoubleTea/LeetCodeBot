@@ -16,7 +16,7 @@ from discord import (
 from discord.channel import ForumChannel, ThreadWithMessage
 from discord.ext import commands
 
-from config.constants import THEME_COLOR, PREVIEW_LEN, LEETCODE_API_REFRESH_TIME
+from config.constants import THEME_COLOR, LEETCODE_API_REFRESH_TIME
 from config.secrets import debug
 from db.problem import Problem
 from main import LeetCodeBot
@@ -85,14 +85,6 @@ class LeetCode(commands.Cog):
             await interaction.response.send_message(
                 "An error occurred.", ephemeral=True
             )
-
-    async def parse_problem_desc(self, content: str) -> str:
-        """
-        Parses the problem description from the LeetCode API response.
-        """
-        if not content:
-            return "No description available."
-        return content[:PREVIEW_LEN] + ("..." if len(content) > PREVIEW_LEN else "")
 
     def format_submissions(
         self,
