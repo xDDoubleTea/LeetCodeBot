@@ -16,7 +16,7 @@ from discord import (
 from discord.channel import ForumChannel, ThreadWithMessage
 from discord.ext import commands
 
-from config.constants import THEME_COLOR, PREVIEW_LEN, LEETCODE_API_REFRESH_TIME
+from config.constants import THEME_COLOR, LEETCODE_API_REFRESH_TIME
 from config.secrets import debug
 from db.problem import Problem
 from main import LeetCodeBot

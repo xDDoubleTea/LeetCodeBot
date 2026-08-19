@@ -1,8 +1,7 @@
 import logging
 from typing import Set, List
 import re2
-from markdownify import markdownify
-from bs4 import BeautifulSoup
+from markdownify import MarkdownConverter
 import discord
 from discord import Client, Embed
 from discord.ext import commands
@@ -13,9 +12,6 @@ from models.leetcode import ProblemDifficulity, UserInfo
 from utils.embed_utils import create_themed_embed
 
 logger = logging.getLogger(__name__)
-
-# replace: from markdownify import markdownify
-from markdownify import MarkdownConverter
 
 
 class LeetCodeMarkdownConverter(MarkdownConverter):
