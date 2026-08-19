@@ -26,9 +26,13 @@ class LeetCodeMarkdownConverter(MarkdownConverter):
     def convert_sub(self, el, text, parent_tags):
         if not text:
             return text
-        # escaped underscore so it can't pair with another literal "_"
-        # elsewhere in the description and get parsed as italics
-        return f"\\_{text}" if " " not in text else f"\\_({text})"
+        # Inside inline/block code, backticks make content literal, so a
+        # backslash escape would render as a visible "\" instead of being
+        # consumed. Outside code, escape the underscore so it can't pair
+        # with another literal "_" elsewhere in the description and get
+        # parsed as italics.
+        underscore = "_" if "_noformat" in parent_tags else "\\_"
+        return f"{underscore}{text}" if " " not in text else f"{underscore}({text})"
 
 
 def _markdownify(html: str, **options) -> str:
