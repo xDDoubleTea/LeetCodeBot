@@ -86,14 +86,6 @@ class LeetCode(commands.Cog):
                 "An error occurred.", ephemeral=True
             )
 
-    async def parse_problem_desc(self, content: str) -> str:
-        """
-        Parses the problem description from the LeetCode API response.
-        """
-        if not content:
-            return "No description available."
-        return content[:PREVIEW_LEN] + ("..." if len(content) > PREVIEW_LEN else "")
-
     def format_submissions(
         self,
         metadata: UserSubmissionPaginationMetaData,
