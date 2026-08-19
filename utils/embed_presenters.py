@@ -1,8 +1,7 @@
 import logging
 from typing import Set, List
 import re2
-from markdownify import markdownify
-from bs4 import BeautifulSoup
+from markdownify import MarkdownConverter
 import discord
 from discord import Client, Embed
 from discord.ext import commands
@@ -13,6 +12,68 @@ from models.leetcode import ProblemDifficulity, UserInfo
 from utils.embed_utils import create_themed_embed
 
 logger = logging.getLogger(__name__)
+
+
+class LeetCodeMarkdownConverter(MarkdownConverter):
+    """markdownify strips <sup>/<sub> content instead of marking it, so
+    exponents like <sup>5</sup> collapse into surrounding text."""
+
+    def convert_sup(self, el, text, parent_tags):
+        if not text:
+            return text
+        return f"^{text}" if " " not in text else f"^({text})"
+
+    def convert_sub(self, el, text, parent_tags):
+        if not text:
+            return text
+        # escaped underscore so it can't pair with another literal "_"
+        # elsewhere in the description and get parsed as italics
+        return f"\\_{text}" if " " not in text else f"\\_({text})"
+
+
+def _markdownify(html: str, **options) -> str:
+    return LeetCodeMarkdownConverter(**options).convert(html)
+
+
+def _fix_truncated_markdown(text: str) -> str:
+    # drop a dangling 1-2 backtick remnant left at the cut point
+    text = re2.sub(r"`{1,2}$", "", text)
+
+    # odd number of complete ``` fences => still inside a code block
+    if len(re2.findall(r"```", text)) % 2 != 0:
+        if not text.endswith("\n"):
+            text += "\n"
+        return text + "```"
+
+    if text.count("`") % 2 != 0:
+        text += "`"
+    if text.count("**") % 2 != 0:
+        text += "**"
+    elif re2.sub(r"\*\*", "", text).count("*") % 2 != 0:
+        text += "*"
+
+    return text
+
+
+def parse_problem_desc(content: str) -> str:
+    logger.debug("Parsing problem description")
+    if not content:
+        return "No description available."
+
+    content = re2.sub(
+        r"(?s)<table.*?>.*?</table>", "\n<em>[Table omitted for preview]<em>\n", content
+    )
+
+    md_text = _markdownify(content, heading_style="ATX", strip=["img"]).strip()
+    md_text = re2.sub(r"\n\s*\n", "\n\n", md_text)
+
+    if len(md_text) <= PREVIEW_LEN:
+        return md_text
+
+    truncated = md_text[:PREVIEW_LEN].rsplit(" ", 1)[0]
+    truncated = _fix_truncated_markdown(truncated)
+
+    return truncated + ("\n..." if truncated.endswith("```") else "...")
 
 
 def get_difficulty_str_repr(difficulty_db_repr: int) -> str:
@@ -83,36 +144,6 @@ def get_problem_desc_pictures(content: str) -> List[str]:
 
     matches = re2.findall(r'<img[^>]+src="([^">]+)"', content)
     return matches[:4]
-
-
-def parse_problem_desc(content: str) -> str:
-    """
-    Parses the problem description from the LeetCode API response.
-    """
-    logger.debug("Parsing problem description")
-    if not content:
-        return "No description available."
-
-    content = re2.sub(
-        r"(?s)<table.*?>.*?</table>", "\n<em>[Table omitted for preview]<em>\n", content
-    )
-
-    md_text = markdownify(content, heading_style="ATX", strip=["img"]).strip()
-    md_text = re2.sub(r"\n\s*\n", "\n\n", md_text)
-
-    if len(md_text) <= PREVIEW_LEN:
-        return md_text
-
-    truncated = md_text[:PREVIEW_LEN].rsplit(" ", 1)[0]
-
-    if truncated.count("`") % 2 != 0:
-        truncated += "`"
-    if truncated.count("**") % 2 != 0:
-        truncated += "**"
-    elif re2.sub(r"\*\*", "", truncated).count("*") % 2 != 0:
-        truncated += "*"
-
-    return truncated + "..."
 
 
 def get_problem_desc_embed(

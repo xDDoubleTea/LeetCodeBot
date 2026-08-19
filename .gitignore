@@ -218,3 +218,4 @@ __marimo__/
 # Logs
 *.log
 *logs/
+/db/test_desc_len.py
