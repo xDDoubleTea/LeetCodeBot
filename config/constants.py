@@ -1,15 +1,23 @@
-import discord
 import datetime
+
+import discord
 
 command_prefix = ">"
 
 tz = datetime.timezone(datetime.timedelta(hours=8))
 LEETCODE_API_REFRESH_TIME = datetime.time(hour=8, minute=5, tzinfo=tz)
 MY_GUILD = discord.Object(1039906085626196079)  # Replace with your guild ID
+
+# For embed description
 PREVIEW_LEN = 4000
 
 DEV_ID = 398444155132575756  # Replace with your Discord user ID
+
 THEME_COLOR = discord.Color.green()
+
+LOG_DIR = "logs"
+BOT_LOG_FILE_NAME = "bot.log"
+SQLALCHEMY_LOG_FILE_NAME = "sqlalchemy.log"
 
 bot_name = "LeetCodeBot"
 
