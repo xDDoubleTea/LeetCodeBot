@@ -1,24 +1,18 @@
+import logging
 from types import SimpleNamespace
 from unittest.mock import MagicMock
-import logging
 
 import pytest
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.pool import StaticPool
 
-from db.async_db_manager import AsyncDatabaseManager
-from db.base import Base
-
 # Importing the model modules registers their tables on Base.metadata, which
-# create_all below needs. It also makes Base.registry.configure() independent of
-# which test module happens to be collected first: Problem.tags and
-# TopicTags.problems only resolve once both sides have been imported.
-# db.problem_list is deliberately not imported: ProblemList declares
-# Mapped[list[int]], which SQLAlchemy cannot map, so importing it raises. The
-# model is unused (cogs/problem_list.py never references it) -- see issue #42.
+# create_all below needs.
 import db.problem  # noqa: F401
 import db.problem_threads  # noqa: F401
 import db.thread_channel  # noqa: F401
+from db.async_db_manager import AsyncDatabaseManager
+from db.base import Base
 
 
 @pytest.fixture(scope="session", autouse=True)
