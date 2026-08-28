@@ -6,8 +6,6 @@ from discord.channel import ThreadWithMessage
 
 from core.leetcode_api import FetchError
 from core.leetcode_problem import ProblemNotFound
-from db.problem import Problem
-from main import logger
 from models.leetcode import ThreadCreationEnum
 from utils.custom_exceptions import ForumChannelNotFound
 

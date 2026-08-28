@@ -5,25 +5,25 @@ description = "A Discord bot for LeetCode problem management."
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "aiosqlite>=0.22.1",
-    "bs4>=0.0.2",
-    "discord-py>=2.6.4",
-    "dotenv>=0.9.9",
-    "flask>=3.1.2",
-    "flask-sqlalchemy>=3.1.1",
-    "google-re2>=1.1.20251105",
-    "markdownify>=1.2.3",
-    "pandoc>=2.4",
-    "prettyprint>=0.1.5",
-    "sqlalchemy>=2.0.44",
+        "aiosqlite>=0.22.1",
+        "bs4>=0.0.2",
+        "discord-py>=2.6.4",
+        "dotenv>=0.9.9",
+        "flask>=3.1.2",
+        "flask-sqlalchemy>=3.1.1",
+        "google-re2>=1.1.20251105",
+        "markdownify>=1.2.3",
+        "pandoc>=2.4",
+        "prettyprint>=0.1.5",
+        "sqlalchemy>=2.0.44",
 ]
 
 [dependency-groups]
 dev = [
-    "pytest>=9.0.2",
-    "pytest-asyncio>=1.3.0",
-    "ruff>=0.14.14",
-    "zensical>=0.0.47",
+        "pytest>=9.0.2",
+        "pytest-asyncio>=1.3.0",
+        "ruff>=0.14.14",
+        "zensical>=0.0.47",
 ]
 
 [tool.ruff]
@@ -40,6 +40,23 @@ indent-style = "space"
 skip-magic-trailing-comma = false
 
 line-ending = "auto"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "ASYNC", "SIM", "RUF"]
+ignore = ["E501", "RUF001"]
+
+[tool.pytest.ini_options]
+# "auto" means async test functions run without an explicit @pytest.mark.asyncio.
+asyncio_mode = "auto"
+# Put the repository root on sys.path so tests can import main, cogs, db and utils.
+pythonpath = ["."]
+testpaths = ["tests"]
+# Live logs stay off by default: at level 10 the aiosqlite and SQLAlchemy chatter
+# buries the test results. Turn them on for a run with
+#   uv run pytest -o log_cli=true
+log_cli_level = 10
+log_cli_format = "%(asctime)s [%(levelname)8s] %(message)s (%(filename)s:%(lineno)s)"
+log_cli_date_format = "%Y-%m-%d %H:%M:%S"
 
 # Source - https://stackoverflow.com/a/51633600
 # Posted by hoefling, modified by community. See post 'Timeline' for change history

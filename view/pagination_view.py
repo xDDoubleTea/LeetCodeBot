@@ -1,5 +1,6 @@
 import logging
-from typing import Any, Awaitable, Callable, Generic, List, Optional, TypeVar
+from collections.abc import Awaitable, Callable
+from typing import Any, Generic, TypeVar
 
 import discord
 from discord import Embed, Interaction, Message, SelectOption
@@ -22,19 +23,15 @@ class BasePaginationView(View, Generic[T_meta]):
     def __init__(
         self,
         *,
-        timeout: Optional[int] = 180,
+        timeout: int | None = 180,
         metadata: T_meta,
-        data: List[Any],
-        format_page: Callable[[T_meta, List[Any]], Embed],
+        data: list[Any],
+        format_page: Callable[[T_meta, list[Any]], Embed],
         items_per_page: int = 10,
-        attached_message: Optional[Message] = None,
+        attached_message: Message | None = None,
         ephemeral=True,
-        select_options_builder: Optional[
-            Callable[[List[Any]], List[SelectOption]]
-        ] = None,
-        select_callback: Optional[
-            Callable[[Interaction, "BasePaginationView", List[str]], Awaitable[None]]
-        ] = None,
+        select_options_builder: Callable[[list[Any]], list[SelectOption]] | None = None,
+        select_callback: Callable[[Interaction, "BasePaginationView", list[str]], Awaitable[None]] | None = None,
         select_placeholder: str = "Select an option...",
     ):
         super().__init__(timeout=timeout)
@@ -51,7 +48,7 @@ class BasePaginationView(View, Generic[T_meta]):
 
         self.select_options_builder = select_options_builder
         self.select_callback = select_callback
-        self.select_menu: Optional[Select] = None
+        self.select_menu: Select | None = None
 
         if self.select_options_builder is None or self.select_callback is None:
             return
@@ -69,7 +66,7 @@ class BasePaginationView(View, Generic[T_meta]):
 
         self._update_select_options()
 
-    def _get_current_page_data(self) -> List[Any]:
+    def _get_current_page_data(self) -> list[Any]:
         start = self.current_page * self.items_per_page
         end = min(start + self.items_per_page, len(self.data))
         return self.data[start:end]
@@ -202,19 +199,15 @@ class ProblemTitlePaginationView(BasePaginationView[ProblemTitlePaginationMetaDa
     def __init__(
         self,
         *,
-        timeout: Optional[int] = 180,
+        timeout: int | None = 180,
         metadata: ProblemTitlePaginationMetaData,
-        data: List[Any],
-        format_page: Callable[[ProblemTitlePaginationMetaData, List[Any]], Embed],
+        data: list[Any],
+        format_page: Callable[[ProblemTitlePaginationMetaData, list[Any]], Embed],
         items_per_page: int = 10,
-        attached_message: Optional[Message] = None,
+        attached_message: Message | None = None,
         ephemeral=True,
-        select_options_builder: Optional[
-            Callable[[List[Any]], List[SelectOption]]
-        ] = None,
-        select_callback: Optional[
-            Callable[[Interaction, "BasePaginationView", List[str]], Awaitable[None]]
-        ] = None,
+        select_options_builder: Callable[[list[Any]], list[SelectOption]] | None = None,
+        select_callback: Callable[[Interaction, "BasePaginationView", list[str]], Awaitable[None]] | None = None,
         select_placeholder: str = "Select an option...",
     ):
         super().__init__(
@@ -235,19 +228,15 @@ class FilterbyTagPaginationView(BasePaginationView[FilterbyTagPaginationMetaData
     def __init__(
         self,
         *,
-        timeout: Optional[int] = 180,
+        timeout: int | None = 180,
         metadata: FilterbyTagPaginationMetaData,
-        data: List[Any],
-        format_page: Callable[[FilterbyTagPaginationMetaData, List[Any]], Embed],
+        data: list[Any],
+        format_page: Callable[[FilterbyTagPaginationMetaData, list[Any]], Embed],
         items_per_page: int = 10,
-        attached_message: Optional[Message] = None,
+        attached_message: Message | None = None,
         ephemeral=True,
-        select_options_builder: Optional[
-            Callable[[List[Any]], List[SelectOption]]
-        ] = None,
-        select_callback: Optional[
-            Callable[[Interaction, "BasePaginationView", List[str]], Awaitable[None]]
-        ] = None,
+        select_options_builder: Callable[[list[Any]], list[SelectOption]] | None = None,
+        select_callback: Callable[[Interaction, "BasePaginationView", list[str]], Awaitable[None]] | None = None,
         select_placeholder: str = "Select an option...",
     ):
         super().__init__(
@@ -268,19 +257,15 @@ class AllTagsPaginationView(BasePaginationView[AllTagsPaginationMetaData]):
     def __init__(
         self,
         *,
-        timeout: Optional[int] = 180,
+        timeout: int | None = 180,
         metadata: AllTagsPaginationMetaData,
-        data: List[Any],
-        format_page: Callable[[AllTagsPaginationMetaData, List[Any]], Embed],
+        data: list[Any],
+        format_page: Callable[[AllTagsPaginationMetaData, list[Any]], Embed],
         items_per_page: int = 10,
-        attached_message: Optional[Message] = None,
+        attached_message: Message | None = None,
         ephemeral=True,
-        select_options_builder: Optional[
-            Callable[[List[Any]], List[SelectOption]]
-        ] = None,
-        select_callback: Optional[
-            Callable[[Interaction, "BasePaginationView", List[str]], Awaitable[None]]
-        ] = None,
+        select_options_builder: Callable[[list[Any]], list[SelectOption]] | None = None,
+        select_callback: Callable[[Interaction, "BasePaginationView", list[str]], Awaitable[None]] | None = None,
         select_placeholder: str = "Select an option...",
     ):
         super().__init__(
@@ -303,19 +288,15 @@ class UserSubmissionPaginationView(
     def __init__(
         self,
         *,
-        timeout: Optional[int] = 180,
+        timeout: int | None = 180,
         metadata: UserSubmissionPaginationMetaData,
-        data: List[Any],
-        format_page: Callable[[UserSubmissionPaginationMetaData, List[Any]], Embed],
+        data: list[Any],
+        format_page: Callable[[UserSubmissionPaginationMetaData, list[Any]], Embed],
         items_per_page: int = 10,
-        attached_message: Optional[Message] = None,
+        attached_message: Message | None = None,
         ephemeral=True,
-        select_options_builder: Optional[
-            Callable[[List[Any]], List[SelectOption]]
-        ] = None,
-        select_callback: Optional[
-            Callable[[Interaction, "BasePaginationView", List[str]], Awaitable[None]]
-        ] = None,
+        select_options_builder: Callable[[list[Any]], list[SelectOption]] | None = None,
+        select_callback: Callable[[Interaction, "BasePaginationView", list[str]], Awaitable[None]] | None = None,
         select_placeholder: str = "Select an option...",
     ):
         super().__init__(

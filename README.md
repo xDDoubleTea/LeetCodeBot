@@ -1,22 +1,17 @@
 # LeetCode Discord Bot
 
-## How to run this bot
+![LeetCode](https://img.shields.io/badge/LeetCode-%23000000.svg?style=for-the-badge&logo=LeetCode&logoColor=#d16c06)
+![tests](https://github.com/xDDoubleTea/LeetCodeBot/actions/workflows/pytest.yml/badge.svg)
+![docs deploy](https://github.com/xDDoubleTea/LeetCodeBot/actions/workflows/docs.yml/badge.svg)
 
-### Prerequisites
+## AI assistant
 
-Ensure [git](https://git-scm.com/install/), [uv](https://docs.astral.sh/uv/getting-started/installation/), [python](https://www.python.org/downloads/) are installed on your system.
+![Claude](https://img.shields.io/badge/claude-%23D97757.svg?style=for-the-badge&logo=claude&logoColor=white)
+![Claude Code](https://img.shields.io/badge/Claude%20Code-%23D97757.svg?style=for-the-badge&logo=claudecode&logoColor=white)
+![Google Gemini](https://img.shields.io/badge/google%20gemini-%238E75B2.svg?style=for-the-badge&logo=google%20gemini&logoColor=white)
 
-### Run these commands in your terminal
-
-```bash
-git clone https://github.com/xDDoubleTea/LeetCodeBot
-cd LeetCodeBot
-uv run main.py
-```
-
-### Visual studio code
-
-If you prefer GUI and you use vscode, you can use the built-in `Clone repository` function to clone this repository. Also make sure to run `uv sync` for code completions to work properly in vscode!!!
+![OpenCode](https://img.shields.io/badge/opencode-%23000000.svg?style=for-the-badge&logo=opencode&logoColor=ffffff)
+![Ollama](https://img.shields.io/badge/ollama-%23000000.svg?style=for-the-badge&logo=ollama&logoColor=white)
 
 ## Features
 
@@ -46,6 +41,25 @@ If you prefer GUI and you use vscode, you can use the built-in `Clone repository
 | `/check-available-tags`                           | Get all possible tags for a LeetCode problem.                            | No         |
 | `/statistics [username]`                          | Gets user statistics by LeetCode username.                               | No         |
 
+## How to run this bot
+
+### Prerequisites
+
+Ensure [git](https://git-scm.com/install/), [uv](https://docs.astral.sh/uv/getting-started/installation/), [python](https://www.python.org/downloads/) are installed on your system.
+
+### Run these commands in your terminal
+
+```bash
+git clone https://github.com/xDDoubleTea/LeetCodeBot
+cd LeetCodeBot
+uv run main.py
+```
+
+### Visual studio code
+
+If you prefer GUI and you use vscode, you can use the built-in `Clone repository` function to clone this repository.
+Make sure to first run `uv sync` to generate the virtual environment for vscode to automatically detect.
+
 ## Roadmap
 
 - [x] Get problem details by ID and create a thread in discord
@@ -59,7 +73,8 @@ If you prefer GUI and you use vscode, you can use the built-in `Clone repository
 
 ## Tech Stack
 
-- python
-- discord.py
-- sqlalchemy
-- sqlite
+![Python](https://img.shields.io/badge/python-%233670A0.svg?style=for-the-badge&logo=python&logoColor=ffdd54)
+![SQLAlchemy](https://img.shields.io/badge/sqlalchemy-%23D71F00.svg?style=for-the-badge&logo=sqlalchemy&logoColor=white)
+![SQLite](https://img.shields.io/badge/sqlite-%2307405e.svg?style=for-the-badge&logo=sqlite&logoColor=white)
+
+[Rapptz/discord.py: An API wrapper for Discord written in Python.](https://github.com/Rapptz/discord.py)

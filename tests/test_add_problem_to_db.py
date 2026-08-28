@@ -9,8 +9,8 @@ against an empty database.
 
 from types import SimpleNamespace
 
-from db.problem import Problem, TopicTags
 from core.leetcode_problem import LeetCodeProblemManager
+from db.problem import Problem, TopicTags
 
 
 def make_problem(problem_id: int = 1) -> Problem:

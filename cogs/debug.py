@@ -4,7 +4,6 @@ import discord
 from discord import Interaction, app_commands
 from discord.ext import commands
 
-from db.problem import Problem
 from main import LeetCodeBot
 from utils.checks import is_me_app_command
 

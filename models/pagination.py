@@ -1,11 +1,9 @@
 import logging
 from dataclasses import dataclass
 from enum import IntEnum
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING
 
 from discord import Client, Color
-
-from models.leetcode import UserSubmission
 
 logger = logging.getLogger(__name__)
 if TYPE_CHECKING:
@@ -33,7 +31,7 @@ class BasePaginationMetaData:
 
     # Because we have to pass client to the embed_utils
     client: Client
-    theme_color: Optional[Color]
+    theme_color: Color | None
 
 
 @dataclass

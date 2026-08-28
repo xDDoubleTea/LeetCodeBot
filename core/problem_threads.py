@@ -1,5 +1,4 @@
 import logging
-from typing import Dict, Set, Tuple
 
 from discord import ForumChannel, Guild, Thread
 from discord.channel import ThreadWithMessage
@@ -31,8 +30,8 @@ class ProblemThreadsManager:
     ) -> None:
         self.async_database_manager: AsyncDatabaseManager = async_database_manager
         self.leetcode_problem_manager: LeetCodeProblemManager = leetcode_problem_manager
-        self.problem_threads: Dict[int, ProblemThreads] = {}
-        self.forum_channels: Dict[int, GuildForumChannel] = {}
+        self.problem_threads: dict[int, ProblemThreads] = {}
+        self.forum_channels: dict[int, GuildForumChannel] = {}
 
     async def init_cache(self):
         async with self.async_database_manager as db:
@@ -207,7 +206,7 @@ class ProblemThreadsManager:
         return problem_thread
 
     async def bulk_upsert_thread_to_db(
-        self, problem_threads: Dict[int, ProblemThreads]
+        self, problem_threads: dict[int, ProblemThreads]
     ) -> None:
         if not problem_threads:
             logger.warning("No problem threads to upsert.")
@@ -248,7 +247,7 @@ class ProblemThreadsManager:
         self,
         channel: ForumChannel,
         problem: Problem,
-        problem_tags: Set[TopicTags],
+        problem_tags: set[TopicTags],
         bot: commands.Bot,
     ) -> ThreadWithMessage:
         logger.info(
@@ -301,7 +300,7 @@ class ProblemThreadsManager:
         guild: Guild,
         bot: commands.Bot,
         is_daily: bool,
-    ) -> Tuple[ThreadWithMessage | Thread, ThreadCreationEnum]:
+    ) -> tuple[ThreadWithMessage | Thread, ThreadCreationEnum]:
         """
         Reopen an existing thread for the problem in the guild's forum channel, or create a new one if it doesn't exist.
         Raises:

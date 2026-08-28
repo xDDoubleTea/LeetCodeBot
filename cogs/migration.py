@@ -1,6 +1,5 @@
 import logging
 import re
-from typing import Dict
 
 import discord
 from discord import ForumChannel, app_commands
@@ -47,7 +46,7 @@ class Migration(commands.Cog):
                 await interaction.followup.send("No tag named LeetCode found!")
                 return
 
-            problem_threads: Dict[int, ProblemThreads] = dict()
+            problem_threads: dict[int, ProblemThreads] = dict()
             all_leetcode_threads = []
             # Example thread name: "1. Two Sum"
             all_leetcode_threads += list(

@@ -1,6 +1,7 @@
 import logging
 import random
-from typing import Dict, Literal, Optional, Sequence, Set
+from collections.abc import Sequence
+from typing import Literal
 
 import re2
 from discord import Client, Embed
@@ -28,13 +29,13 @@ class LeetCodeProblemManager:
         leetcode_api: LeetCodeAPI,
         async_database_manager: AsyncDatabaseManager,
     ) -> None:
-        self.all_problem_cache: Dict[int, Problem] = dict()
-        self.free_problem_cache: Dict[int, Problem] = dict()
+        self.all_problem_cache: dict[int, Problem] = dict()
+        self.free_problem_cache: dict[int, Problem] = dict()
         self.daily_problem: ProblemWithTags | None = None
         self.leetcode_api: LeetCodeAPI = leetcode_api
         self.async_database_manager: AsyncDatabaseManager = async_database_manager
 
-    async def _bulk_upsert_problems(self, api_problems: Dict[int, Problem]) -> None:
+    async def _bulk_upsert_problems(self, api_problems: dict[int, Problem]) -> None:
         async with self.async_database_manager as db:
             logger.info(f"Upserting {len(api_problems)} problems into the database.")
             mappings = [problem.to_dict() for problem in api_problems.values()]
@@ -54,7 +55,7 @@ class LeetCodeProblemManager:
             await db.execute(insert_stmt, mappings)
             logger.info("Bulk upsert of problems completed.")
 
-    async def _bulk_upsert_topic_tags(self, topic_tags: Set[TopicTags]) -> None:
+    async def _bulk_upsert_topic_tags(self, topic_tags: set[TopicTags]) -> None:
         async with self.async_database_manager as db:
             logger.info(f"Upserting {len(topic_tags)} topic tags into the database.")
             insert_stmt = sqlite_upsert(TopicTags)
@@ -68,7 +69,7 @@ class LeetCodeProblemManager:
 
     async def _create_problem_tag_associations(
         self,
-        all_api_problems_data: Dict[int, ProblemWithTags],
+        all_api_problems_data: dict[int, ProblemWithTags],
     ) -> None:
         """Creates associations based on the API data."""
         async with self.async_database_manager as db:
@@ -151,17 +152,17 @@ class LeetCodeProblemManager:
         try:
             logger.info("Fetching all problems from LeetCode API...")
             api_problems = await self.leetcode_api.fetch_all_problems()
-            all_problems: Dict[int, Problem] = {
+            all_problems: dict[int, Problem] = {
                 problem_frontend_id: problem_with_tags.problem
                 for problem_frontend_id, problem_with_tags in api_problems.items()
             }
-            all_problem_tags: Dict[int, Set[TopicTags]] = {
+            all_problem_tags: dict[int, set[TopicTags]] = {
                 problem_frontend_id: problem_with_tags.tags
                 for problem_frontend_id, problem_with_tags in api_problems.items()
             }
             logger.info(f"Fetched {len(all_problems)} problems from LeetCode API.")
             await self._bulk_upsert_problems(all_problems)
-            all_topic_tags: Set[TopicTags] = set()
+            all_topic_tags: set[TopicTags] = set()
             for tags in all_problem_tags.values():
                 all_topic_tags.update(tags)
             logger.debug(
@@ -183,7 +184,7 @@ class LeetCodeProblemManager:
             results = await db.scalars(stmt)
             return results.all()
 
-    async def get_all_topics_from_db(self) -> Dict[int, TopicTags]:
+    async def get_all_topics_from_db(self) -> dict[int, TopicTags]:
         async with self.async_database_manager as db:
             stmt = select(TopicTags)
             logger.info("Fetching all topic tags from the database.")
@@ -214,8 +215,8 @@ class LeetCodeProblemManager:
 
     async def get_problem_from_db(
         self,
-        problem_frontend_id: Optional[int] = None,
-        problem_db_id: Optional[int] = None,
+        problem_frontend_id: int | None = None,
+        problem_db_id: int | None = None,
     ) -> Problem | None:
         """
         Retrieves problem from database. Provide exactly one of the front end id or the backend id for the problem.
@@ -253,7 +254,7 @@ class LeetCodeProblemManager:
         return None
 
     async def get_random_problem(
-        self, difficulty: Optional[Literal["Easy", "Medium", "Hard"]], premium: bool
+        self, difficulty: Literal["Easy", "Medium", "Hard"] | None, premium: bool
     ) -> ProblemWithTags:
         if not difficulty:
             problem_pool = list(
@@ -392,7 +393,7 @@ class LeetCodeProblemManager:
             raise Exception(e)
 
     async def add_problem_to_db(
-        self, problem: Problem, tags: Set[TopicTags]
+        self, problem: Problem, tags: set[TopicTags]
     ) -> Problem:
         async with self.async_database_manager as db:
             logger.info(f"Adding problem with ID {problem.problem_id} to the database.")

@@ -1,8 +1,7 @@
 import asyncio
 import inspect
-import random
 import logging
-from typing import Dict, List, Set
+import random
 from pathlib import Path
 
 import aiohttp
@@ -40,7 +39,7 @@ class LeetCodeAPI:
             "Origin": "https://leetcode.com",
         }
         self.delay = 0.3
-        self.queries: Dict[str, str] = {}
+        self.queries: dict[str, str] = {}
 
     def _load_graphql_queries(self):
         current_dir = Path(__file__).parent
@@ -51,7 +50,7 @@ class LeetCodeAPI:
         for filepath in graphql_dir.glob("*.graphql"):
             logger.debug(f"Loading file {filepath}")
             query_name = filepath.stem
-            with open(filepath, "r", encoding="utf-8") as f:
+            with open(filepath, encoding="utf-8") as f:
                 self.queries[query_name] = f.read()
                 logger.debug(f"Query loaded {query_name} : {self.queries[query_name]}")
 
@@ -62,8 +61,8 @@ class LeetCodeAPI:
         self._load_graphql_queries()
 
     async def _parse_recent_submission_list(
-        self, raw_list: List[dict]
-    ) -> List[UserSubmission]:
+        self, raw_list: list[dict]
+    ) -> list[UserSubmission]:
         return [
             UserSubmission(
                 title=raw_submission.get("title", ""),
@@ -170,8 +169,8 @@ class LeetCodeAPI:
                 premium=response_json.get("isPaidOnly", False),
             )
             logger.debug("Parsed Single Problem: %s", problem)
-            problem_tags: List[dict] = response_json.get("topicTags", [])
-            tags: Set[TopicTags] = set(
+            problem_tags: list[dict] = response_json.get("topicTags", [])
+            tags: set[TopicTags] = set(
                 TopicTags(tag_name=tag.get("name", "")) for tag in problem_tags
             )
             logger.debug("Parsed Single Problem Tags: %s", tags)
@@ -207,8 +206,8 @@ class LeetCodeAPI:
             raise Exception("Error parsing daily problem response") from e
 
     async def _parse_all_problem_dict(
-        self, temp_questions: Dict[int, dict]
-    ) -> Dict[int, ProblemWithTags]:
+        self, temp_questions: dict[int, dict]
+    ) -> dict[int, ProblemWithTags]:
         logger.info("Parsing dictionary of all problems")
         return {
             key: await self._parse_single_problem_response(val)
@@ -227,7 +226,7 @@ class LeetCodeAPI:
 
     async def fetch_all_problems(
         self,
-    ) -> Dict[int, ProblemWithTags]:
+    ) -> dict[int, ProblemWithTags]:
         logger.info("Fetching all problems from LeetCode")
 
         cur_frame = inspect.currentframe()
@@ -240,7 +239,7 @@ class LeetCodeAPI:
 
         skip = 0
         total_questions = -1
-        temp_questions: Dict[int, dict] = {}
+        temp_questions: dict[int, dict] = {}
 
         while True:
             try:
@@ -338,7 +337,7 @@ class LeetCodeAPI:
 
     async def user_submission(
         self, username: str, limit: int = 20
-    ) -> List[UserSubmission]:
+    ) -> list[UserSubmission]:
         logger.info(f"Fetching user submissions for username {username}")
 
         cur_frame = inspect.currentframe()

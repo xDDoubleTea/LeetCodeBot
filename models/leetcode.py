@@ -1,8 +1,7 @@
 import logging
-import datetime
 from dataclasses import dataclass
 from enum import Enum, IntEnum
-from typing import TYPE_CHECKING, Set, List
+from typing import TYPE_CHECKING
 
 import discord
 
@@ -44,7 +43,7 @@ class ThreadCreationEnum(IntEnum):
 @dataclass
 class ProblemWithTags:
     problem: "Problem"
-    tags: Set["TopicTags"]
+    tags: set["TopicTags"]
 
 
 @dataclass
@@ -62,7 +61,7 @@ class UserProfile:
     company: str
     job_title: str
     school: str
-    websites: List[str]
+    websites: list[str]
 
 
 @dataclass

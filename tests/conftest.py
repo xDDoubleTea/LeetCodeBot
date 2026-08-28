@@ -8,8 +8,8 @@ from sqlalchemy.pool import StaticPool
 
 # Importing the model modules registers their tables on Base.metadata, which
 # create_all below needs.
-import db.problem  # noqa: F401
-import db.problem_threads  # noqa: F401
+import db.problem
+import db.problem_threads
 import db.thread_channel  # noqa: F401
 from db.async_db_manager import AsyncDatabaseManager
 from db.base import Base
