@@ -4,6 +4,15 @@
 ![tests](https://github.com/xDDoubleTea/LeetCodeBot/actions/workflows/pytest.yml/badge.svg)
 ![docs deploy](https://github.com/xDDoubleTea/LeetCodeBot/actions/workflows/docs.yml/badge.svg)
 
+## AI assitance
+
+![Claude](https://img.shields.io/badge/claude-%23D97757.svg?style=for-the-badge&logo=claude&logoColor=white)
+![Claude Code](https://img.shields.io/badge/Claude%20Code-%23D97757.svg?style=for-the-badge&logo=claudecode&logoColor=white)
+![Google Gemini](https://img.shields.io/badge/google%20gemini-%238E75B2.svg?style=for-the-badge&logo=google%20gemini&logoColor=white)
+
+![OpenCode](https://img.shields.io/badge/opencode-%23000000.svg?style=for-the-badge&logo=opencode&logoColor=ffffff)
+![Ollama](https://img.shields.io/badge/ollama-%23000000.svg?style=for-the-badge&logo=ollama&logoColor=white)
+
 ## Features
 
 - Discuss LeetCode problems with friends in your Discord server.
