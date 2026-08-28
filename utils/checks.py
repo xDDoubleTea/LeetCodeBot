@@ -18,9 +18,15 @@ class UserNotAdministrator(AppCommandError):
         super().__init__(self.message)
 
 
-class IsNotDev(CommandError):
+class IsNotDev(CommandError, AppCommandError):
     """
     Custom exception raised when a user is not a dev (i.e., not me)
+
+    Both bases are needed because the same class is raised from a prefix
+    command check (is_me_command) and a slash command check
+    (is_me_app_command). CommandTree only catches AppCommandError, so
+    without it the slash command failure escapes into an unretrieved task
+    and the interaction times out with no reply.
     """
 
     def __init__(self, message: str = "還想偷用奇怪的指令阿"):
