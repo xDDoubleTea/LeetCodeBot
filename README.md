@@ -4,7 +4,7 @@
 ![tests](https://github.com/xDDoubleTea/LeetCodeBot/actions/workflows/pytest.yml/badge.svg)
 ![docs deploy](https://github.com/xDDoubleTea/LeetCodeBot/actions/workflows/docs.yml/badge.svg)
 
-## AI assitance
+## AI assistant
 
 ![Claude](https://img.shields.io/badge/claude-%23D97757.svg?style=for-the-badge&logo=claude&logoColor=white)
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-%23D97757.svg?style=for-the-badge&logo=claudecode&logoColor=white)
