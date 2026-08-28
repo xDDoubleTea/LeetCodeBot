@@ -1,7 +1,6 @@
 import calendar
 import datetime
 import logging
-from typing import Union
 
 from discord import Client, Embed
 
@@ -11,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 def create_themed_embed(
-    title: str, description: str = "", client: Union[Client, None] = None
+    title: str, description: str = "", client: Client | None = None
 ) -> Embed:
     embed = Embed(title=title, description=description, color=THEME_COLOR)
     if client:
@@ -25,7 +24,7 @@ def add_std_footer(embed: Embed, client: Client):
     dev = client.get_user(DEV_ID)
     assert dev is not None and dev.avatar is not None and client.user.avatar is not None
 
-    dt = datetime.datetime.now(tz=datetime.timezone.utc).timetuple()
+    dt = datetime.datetime.now(tz=datetime.UTC).timetuple()
 
     embed.description = (
         f"<t:{calendar.timegm(dt)}:F>\n{embed.description if embed.description else ''}"

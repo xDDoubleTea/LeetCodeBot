@@ -1,12 +1,12 @@
 import logging
-from typing import Set, List
-import re2
-from markdownify import MarkdownConverter
+
 import discord
+import re2
 from discord import Client, Embed
 from discord.ext import commands
-from config.constants import PREVIEW_LEN
+from markdownify import MarkdownConverter
 
+from config.constants import PREVIEW_LEN
 from db.problem import Problem, TopicTags
 from models.leetcode import ProblemDifficulity, UserInfo
 from utils.embed_utils import create_themed_embed
@@ -142,7 +142,7 @@ def get_embed_color(difficulty_db_repr: int) -> discord.Color:
         return discord.Color.blue()  # Default to blue if unknown
 
 
-def get_problem_desc_pictures(content: str) -> List[str]:
+def get_problem_desc_pictures(content: str) -> list[str]:
     if not content:
         return []
 
@@ -151,8 +151,8 @@ def get_problem_desc_pictures(content: str) -> List[str]:
 
 
 def get_problem_desc_embed(
-    problem: Problem, problem_tags: Set[TopicTags], bot: commands.Bot | Client
-) -> List[Embed]:
+    problem: Problem, problem_tags: set[TopicTags], bot: commands.Bot | Client
+) -> list[Embed]:
     """
     Get the description embed for a given problem.
     """

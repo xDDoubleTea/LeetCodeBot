@@ -1,6 +1,6 @@
 from unittest.mock import AsyncMock, MagicMock, patch
-import aiohttp
 
+import aiohttp
 import pytest
 
 from core.leetcode_api import FetchError, LeetCodeAPI

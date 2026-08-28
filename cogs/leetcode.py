@@ -1,9 +1,6 @@
-import datetime
 import logging
-from re import sub
-from typing import List, Literal, Optional
+from typing import Literal
 
-from discord.ext import tasks
 from discord import (
     DMChannel,
     Embed,
@@ -14,9 +11,9 @@ from discord import (
     app_commands,
 )
 from discord.channel import ForumChannel, ThreadWithMessage
-from discord.ext import commands
+from discord.ext import commands, tasks
 
-from config.constants import THEME_COLOR, LEETCODE_API_REFRESH_TIME
+from config.constants import LEETCODE_API_REFRESH_TIME, THEME_COLOR
 from config.secrets import debug
 from db.problem import Problem
 from main import LeetCodeBot
@@ -26,7 +23,6 @@ from models.leetcode import (
     ThreadCreationEnum,
     UserSubmission,
 )
-
 from models.pagination import (
     AllTagsPaginationMetaData,
     FilterbyTagPaginationMetaData,
@@ -89,7 +85,7 @@ class LeetCode(commands.Cog):
     def format_submissions(
         self,
         metadata: UserSubmissionPaginationMetaData,
-        submission_list: List[UserSubmission],
+        submission_list: list[UserSubmission],
     ) -> Embed:
         embed = embed_utils.create_themed_embed(
             title=f"Recent Submissions for {metadata.leetcode_username}",
@@ -116,7 +112,7 @@ class LeetCode(commands.Cog):
     def format_problem(
         self,
         metadata: ProblemTitlePaginationMetaData | FilterbyTagPaginationMetaData,
-        problems_list: List[Problem],
+        problems_list: list[Problem],
     ) -> Embed:
         embed_title = ""
         if isinstance(metadata, ProblemTitlePaginationMetaData):
@@ -138,7 +134,7 @@ class LeetCode(commands.Cog):
         return embed
 
     def format_tags(
-        self, metadata: AllTagsPaginationMetaData, tags_list: List[str]
+        self, metadata: AllTagsPaginationMetaData, tags_list: list[str]
     ) -> Embed:
         embed = embed_utils.create_themed_embed(
             title="All available tags",
@@ -154,8 +150,8 @@ class LeetCode(commands.Cog):
         return embed
 
     def build_problem_options(
-        self, cur_page_problem: List[Problem]
-    ) -> List[SelectOption]:
+        self, cur_page_problem: list[Problem]
+    ) -> list[SelectOption]:
         return [
             SelectOption(
                 label=f"{p.problem_frontend_id}. {p.title} [{ProblemDifficulity.from_db_repr(p.difficulty).value[1]}]"[
@@ -167,7 +163,7 @@ class LeetCode(commands.Cog):
         ]
 
     async def handle_problem_select(
-        self, interaction: Interaction, view: BasePaginationView, values: List[str]
+        self, interaction: Interaction, view: BasePaginationView, values: list[str]
     ):
         problem_frontend_id = int(values[0])
         problem_with_tags = (
@@ -345,7 +341,7 @@ class LeetCode(commands.Cog):
         id="The problem id. If not provided, attempts to resovle problem id from thread."
     )
     @app_commands.guild_only()
-    async def leetcode_desc(self, interaction: Interaction, id: Optional[int]) -> None:
+    async def leetcode_desc(self, interaction: Interaction, id: int | None) -> None:
         await interaction.response.defer(thinking=True)
         try:
             assert interaction.guild
@@ -492,7 +488,7 @@ class LeetCode(commands.Cog):
     async def random_problem(
         self,
         interaction: Interaction,
-        difficulty: Optional[Literal["Easy", "Medium", "Hard"]],
+        difficulty: Literal["Easy", "Medium", "Hard"] | None,
         premium: bool = False,
     ):
         assert interaction.guild

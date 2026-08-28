@@ -8,7 +8,7 @@ load_dotenv()
 def get_required_secret(key: str) -> str:
     value = os.getenv(key)
     if value is None:
-        raise EnvironmentError(
+        raise OSError(
             f"Required secret '{key}' is not set in environment variables."
         )
     return value

@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Optional
+from typing import Any
 
 import discord
 from discord import Guild, Member, Message, PartialMessage, Role, TextChannel
@@ -37,7 +37,7 @@ async def get_or_fetch(
 
 async def try_get_channel_by_bot(
     bot: discord.Client | Bot, channel_id: int
-) -> Optional[GuildChannel | discord.TextChannel]:
+) -> GuildChannel | discord.TextChannel | None:
     return await get_or_fetch(
         container=bot,
         obj_id=channel_id,
@@ -46,7 +46,7 @@ async def try_get_channel_by_bot(
     )
 
 
-async def try_get_user(bot: discord.Client | Bot, user_id: int) -> Optional[User]:
+async def try_get_user(bot: discord.Client | Bot, user_id: int) -> User | None:
     return await get_or_fetch(
         container=bot,
         obj_id=user_id,
@@ -57,7 +57,7 @@ async def try_get_user(bot: discord.Client | Bot, user_id: int) -> Optional[User
 
 async def try_get_channel(
     guild: discord.Guild, channel_id: int
-) -> Optional[GuildChannel | discord.TextChannel]:
+) -> GuildChannel | discord.TextChannel | None:
     return await get_or_fetch(
         container=guild,
         obj_id=channel_id,
@@ -66,7 +66,7 @@ async def try_get_channel(
     )
 
 
-async def try_get_guild(bot: discord.Client | Bot, guild_id: int) -> Optional[Guild]:
+async def try_get_guild(bot: discord.Client | Bot, guild_id: int) -> Guild | None:
     return await get_or_fetch(
         container=bot,
         obj_id=guild_id,
@@ -75,7 +75,7 @@ async def try_get_guild(bot: discord.Client | Bot, guild_id: int) -> Optional[Gu
     )
 
 
-async def try_get_member(guild: Guild, member_id: int) -> Optional[Member]:
+async def try_get_member(guild: Guild, member_id: int) -> Member | None:
     return await get_or_fetch(
         container=guild,
         obj_id=member_id,
@@ -84,7 +84,7 @@ async def try_get_member(guild: Guild, member_id: int) -> Optional[Member]:
     )
 
 
-async def try_get_role(guild: Guild, role_id: int) -> Optional[Role]:
+async def try_get_role(guild: Guild, role_id: int) -> Role | None:
     return await get_or_fetch(
         container=guild,
         obj_id=role_id,
@@ -95,7 +95,7 @@ async def try_get_role(guild: Guild, role_id: int) -> Optional[Role]:
 
 async def try_get_message(
     channel: TextChannel | DMChannel, message_id: int
-) -> Optional[PartialMessage | Message]:
+) -> PartialMessage | Message | None:
     return await get_or_fetch(
         container=channel,
         obj_id=message_id,
