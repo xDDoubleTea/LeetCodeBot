@@ -396,15 +396,23 @@ class LeetCodeProblemManager:
     ) -> Problem:
         async with self.async_database_manager as db:
             logger.info(f"Adding problem with ID {problem.problem_id} to the database.")
-            # Check for existing problem
+            # Check for existing problem. The tags are eager loaded because the
+            # loop below reads db_problem.tags: a lazy load there would emit IO
+            # from plain attribute access, which raises MissingGreenlet on the
+            # async engine.
             result = await db.scalars(
-                select(Problem).where(Problem.problem_id == problem.problem_id)
+                select(Problem)
+                .options(selectinload(Problem.tags))
+                .where(Problem.problem_id == problem.problem_id)
             )
             db_problem = result.first()
             if not db_problem:
                 db.add(problem)
                 await db.flush()
                 db_problem = problem
+                # After the flush the problem is persistent with an unloaded
+                # tags collection, so it needs the same treatment.
+                await db.refresh(db_problem, attribute_names=["tags"])
 
             # Handle tags
             logger.info(f"Associating tags with problem ID {db_problem.problem_id}.")
