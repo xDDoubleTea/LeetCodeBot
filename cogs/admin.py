@@ -33,8 +33,6 @@ class admin(Cog):
             await ctx.send(f"{ext_name} is not a legal extension name!")
         else:
             await ctx.send(f"{ext_name} has been sucessfully loaded!")
-        finally:
-            return None
 
     @commands.command(name="unload", hidden=True)
     @is_me_command()
@@ -53,8 +51,6 @@ class admin(Cog):
             await ctx.send(f"{ext_name} is not a legal extension name!")
         else:
             await ctx.send(f"{ext_name} has been sucessfully unloaded!")
-        finally:
-            return None
 
     @commands.command(name="reload", hidden=True)
     @is_me_command()
@@ -67,8 +63,6 @@ class admin(Cog):
             await ctx.send(f"{ext_name} is not a legal extension name!")
         else:
             await ctx.send(f"{ext_name} has been sucessfully reloaded!")
-        finally:
-            return None
 
     @commands.command(name="ext_list", hidden=True)
     @is_me_command()
