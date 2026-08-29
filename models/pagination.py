@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     pass
 
 
-class PaginationViewButtonLayouts(IntEnum):
+class PageButtons(IntEnum):
     FIRST_PAGE = 0
     PREV_PAGE = 1
     PAGE_DISPLAY = 2
@@ -19,7 +19,7 @@ class PaginationViewButtonLayouts(IntEnum):
 
 
 @dataclass
-class BasePaginationMetaData:
+class BasePageMetaData:
     """The metadata used by the pagination view."""
 
     guild_name: str
@@ -35,23 +35,23 @@ class BasePaginationMetaData:
 
 
 @dataclass
-class ProblemTitlePaginationMetaData(BasePaginationMetaData):
+class ProblemTitlePageMeta(BasePageMetaData):
     search_regex: str
     data_len: int
 
 
 @dataclass
-class FilterbyTagPaginationMetaData(BasePaginationMetaData):
+class FilterbyTagPageMeta(BasePageMetaData):
     tag_name_query: str
     data_len: int
 
 
 @dataclass
-class AllTagsPaginationMetaData(BasePaginationMetaData):
+class AllTagsPageMeta(BasePageMetaData):
     data_len: int
 
 
 @dataclass
-class UserSubmissionPaginationMetaData(BasePaginationMetaData):
+class UserSubmissionPageMeta(BasePageMetaData):
     leetcode_username: str
     data_len: int

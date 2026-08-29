@@ -175,8 +175,8 @@ class LeetCodeAPI:
             )
             logger.debug("Parsed Single Problem Tags: %s", tags)
             return ProblemWithTags(problem, tags)
-        except ValueError:
-            raise Exception("Invalid difficulty value")
+        except ValueError as e:
+            raise Exception("Invalid difficulty value") from e
         except Exception as e:
             logger.error("Error parsing single problem response: %s", e)
             raise Exception("Error parsing single problem response") from e
@@ -199,8 +199,8 @@ class LeetCodeAPI:
             logger.debug(f"Parsed Daily Problem: {problem_with_tags.problem}")
             logger.debug(f"Parsed Daily Problem Tags: {problem_with_tags.tags}")
             return problem_with_tags
-        except AssertionError:
-            raise Exception("Raw problem object is not a dictionary")
+        except AssertionError as e:
+            raise Exception("Raw problem object is not a dictionary") from e
         except Exception as e:
             logger.error("Error parsing daily problem response: %s", e)
             raise Exception("Error parsing daily problem response") from e
@@ -279,7 +279,7 @@ class LeetCodeAPI:
                 await asyncio.sleep(self.delay)
             except Exception as e:
                 logger.error(f"Error at skip {skip}", exc_info=e)
-                raise FetchError(e)
+                raise FetchError(e) from e
 
         logger.info("Fetched all problems successfully")
         return await self._parse_all_problem_dict(temp_questions)

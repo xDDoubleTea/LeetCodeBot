@@ -24,10 +24,10 @@ from models.leetcode import (
     UserSubmission,
 )
 from models.pagination import (
-    AllTagsPaginationMetaData,
-    FilterbyTagPaginationMetaData,
-    ProblemTitlePaginationMetaData,
-    UserSubmissionPaginationMetaData,
+    AllTagsPageMeta,
+    FilterbyTagPageMeta,
+    ProblemTitlePageMeta,
+    UserSubmissionPageMeta,
 )
 from utils import embed_utils
 from utils.embed_presenters import (
@@ -71,7 +71,7 @@ class LeetCode(commands.Cog):
 
     def format_submissions(
         self,
-        metadata: UserSubmissionPaginationMetaData,
+        metadata: UserSubmissionPageMeta,
         submission_list: list[UserSubmission],
     ) -> Embed:
         embed = embed_utils.create_themed_embed(
@@ -98,13 +98,13 @@ class LeetCode(commands.Cog):
 
     def format_problem(
         self,
-        metadata: ProblemTitlePaginationMetaData | FilterbyTagPaginationMetaData,
+        metadata: ProblemTitlePageMeta | FilterbyTagPageMeta,
         problems_list: list[Problem],
     ) -> Embed:
         embed_title = ""
-        if isinstance(metadata, ProblemTitlePaginationMetaData):
+        if isinstance(metadata, ProblemTitlePageMeta):
             embed_title = f"Problem title matching '{metadata.search_regex}'"
-        elif isinstance(metadata, FilterbyTagPaginationMetaData):
+        elif isinstance(metadata, FilterbyTagPageMeta):
             embed_title = f"Filtered by tag '{metadata.tag_name_query}'"
 
         embed = embed_utils.create_themed_embed(
@@ -120,9 +120,7 @@ class LeetCode(commands.Cog):
             )
         return embed
 
-    def format_tags(
-        self, metadata: AllTagsPaginationMetaData, tags_list: list[str]
-    ) -> Embed:
+    def format_tags(self, metadata: AllTagsPageMeta, tags_list: list[str]) -> Embed:
         embed = embed_utils.create_themed_embed(
             title="All available tags",
             description=f"Total tags found: {metadata.data_len}",
@@ -210,7 +208,7 @@ class LeetCode(commands.Cog):
                     "This command can only be used in a server!", ephemeral=True
                 )
 
-            metadata = ProblemTitlePaginationMetaData(
+            metadata = ProblemTitlePageMeta(
                 guild_name=guild.name,
                 guild_id=guild.id,
                 channel_name=channel.name or "No name",
@@ -255,7 +253,7 @@ class LeetCode(commands.Cog):
                 "This command can only be used in a server!", ephemeral=True
             )
 
-        metadata = AllTagsPaginationMetaData(
+        metadata = AllTagsPageMeta(
             guild_name=guild.name,
             guild_id=guild.id,
             channel_name=channel.name or "No name",
@@ -298,7 +296,7 @@ class LeetCode(commands.Cog):
                 "This command can only be used in a server!", ephemeral=True
             )
 
-        metadata = FilterbyTagPaginationMetaData(
+        metadata = FilterbyTagPageMeta(
             guild_name=guild.name,
             guild_id=guild.id,
             channel_name=channel.name or "No name",
@@ -537,7 +535,7 @@ class LeetCode(commands.Cog):
                 )
                 return
 
-            metadata = UserSubmissionPaginationMetaData(
+            metadata = UserSubmissionPageMeta(
                 guild_name=guild.name,
                 guild_id=guild.id,
                 channel_name=channel.name or "No name",

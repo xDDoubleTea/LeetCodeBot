@@ -1,40 +1,42 @@
 import logging
 from collections.abc import Awaitable, Callable
-from typing import Any, Generic, TypeVar
+from typing import Any
 
 import discord
 from discord import Embed, Interaction, Message, SelectOption
 from discord.ui import Button, Select, View, button
 
 from models.pagination import (
-    AllTagsPaginationMetaData,
-    BasePaginationMetaData,
-    FilterbyTagPaginationMetaData,
-    PaginationViewButtonLayouts,
-    ProblemTitlePaginationMetaData,
-    UserSubmissionPaginationMetaData,
+    AllTagsPageMeta,
+    BasePageMetaData,
+    FilterbyTagPageMeta,
+    PageButtons,
+    ProblemTitlePageMeta,
+    UserSubmissionPageMeta,
 )
 
 logger = logging.getLogger(__name__)
-T_meta = TypeVar("T_meta", bound=BasePaginationMetaData)
+
+# Every view takes the same callback, and spelling it out inline wraps over four
+# lines at the configured line length.
+type SelectCallback = Callable[
+    [Interaction, "BasePaginationView", list[str]], Awaitable[None]
+]
 
 
-class BasePaginationView(View, Generic[T_meta]):
+class BasePaginationView[MetaT: BasePageMetaData](View):
     def __init__(
         self,
         *,
         timeout: int | None = 180,
-        metadata: T_meta,
+        metadata: MetaT,
         data: list[Any],
-        format_page: Callable[[T_meta, list[Any]], Embed],
+        format_page: Callable[[MetaT, list[Any]], Embed],
         items_per_page: int = 10,
         attached_message: Message | None = None,
         ephemeral=True,
         select_options_builder: Callable[[list[Any]], list[SelectOption]] | None = None,
-        select_callback: Callable[
-            [Interaction, "BasePaginationView", list[str]], Awaitable[None]
-        ]
-        | None = None,
+        select_callback: SelectCallback | None = None,
         select_placeholder: str = "Select an option...",
     ):
         super().__init__(timeout=timeout)
@@ -116,15 +118,15 @@ class BasePaginationView(View, Generic[T_meta]):
         for item in self.children:
             if isinstance(item, Button):
                 match item.custom_id:
-                    case PaginationViewButtonLayouts.FIRST_PAGE.name:
+                    case PageButtons.FIRST_PAGE.name:
                         item.disabled = self.current_page <= 0
-                    case PaginationViewButtonLayouts.PREV_PAGE.name:
+                    case PageButtons.PREV_PAGE.name:
                         item.disabled = self.current_page <= 0
-                    case PaginationViewButtonLayouts.PAGE_DISPLAY.name:
+                    case PageButtons.PAGE_DISPLAY.name:
                         item.label = f"{self.current_page + 1} / {self.total_pages}"
-                    case PaginationViewButtonLayouts.NEXT_PAGE.name:
+                    case PageButtons.NEXT_PAGE.name:
                         item.disabled = self.current_page >= self.total_pages - 1
-                    case PaginationViewButtonLayouts.LAST_PAGE.name:
+                    case PageButtons.LAST_PAGE.name:
                         item.disabled = self.current_page >= self.total_pages - 1
 
     async def _update_page(self, interaction: Interaction):
@@ -137,7 +139,7 @@ class BasePaginationView(View, Generic[T_meta]):
         label="First page⏮️",
         style=discord.ButtonStyle.blurple,
         disabled=True,
-        custom_id=PaginationViewButtonLayouts.FIRST_PAGE.name,
+        custom_id=PageButtons.FIRST_PAGE.name,
     )
     async def first_callback(self, interaction: Interaction, button: Button):
         self.current_page = 0
@@ -146,7 +148,7 @@ class BasePaginationView(View, Generic[T_meta]):
     @button(
         label="Prev◀️",
         style=discord.ButtonStyle.blurple,
-        custom_id=PaginationViewButtonLayouts.PREV_PAGE.name,
+        custom_id=PageButtons.PREV_PAGE.name,
     )
     async def pre_callback(self, interaction: Interaction, button: Button):
         self.current_page = max(self.current_page - 1, 0)
@@ -155,7 +157,7 @@ class BasePaginationView(View, Generic[T_meta]):
     @button(
         label="1/1",
         style=discord.ButtonStyle.blurple,
-        custom_id=PaginationViewButtonLayouts.PAGE_DISPLAY.name,
+        custom_id=PageButtons.PAGE_DISPLAY.name,
     )
     async def page_display_btn(self, interaction: Interaction, button: Button):
         await interaction.response.defer(ephemeral=self.ephemeral)
@@ -163,7 +165,7 @@ class BasePaginationView(View, Generic[T_meta]):
     @button(
         label="Next▶️",
         style=discord.ButtonStyle.blurple,
-        custom_id=PaginationViewButtonLayouts.NEXT_PAGE.name,
+        custom_id=PageButtons.NEXT_PAGE.name,
     )
     async def next_callback(self, interaction: Interaction, button: Button):
         self.current_page = min(self.current_page + 1, self.total_pages - 1)
@@ -172,7 +174,7 @@ class BasePaginationView(View, Generic[T_meta]):
     @button(
         label="Last page⏭️",
         style=discord.ButtonStyle.blurple,
-        custom_id=PaginationViewButtonLayouts.LAST_PAGE.name,
+        custom_id=PageButtons.LAST_PAGE.name,
     )
     async def last_callback(self, interaction: Interaction, button: Button):
         self.current_page = self.total_pages - 1
@@ -183,10 +185,7 @@ class BasePaginationView(View, Generic[T_meta]):
             try:
                 for item in self.children:
                     if isinstance(item, Button):
-                        if (
-                            item.custom_id
-                            == PaginationViewButtonLayouts.PAGE_DISPLAY.name
-                        ):
+                        if item.custom_id == PageButtons.PAGE_DISPLAY.name:
                             item.label = "Expired..."
                         item.style = discord.ButtonStyle.grey
                         item.disabled = True
@@ -198,131 +197,7 @@ class BasePaginationView(View, Generic[T_meta]):
                 return
 
 
-class ProblemTitlePaginationView(BasePaginationView[ProblemTitlePaginationMetaData]):
-    def __init__(
-        self,
-        *,
-        timeout: int | None = 180,
-        metadata: ProblemTitlePaginationMetaData,
-        data: list[Any],
-        format_page: Callable[[ProblemTitlePaginationMetaData, list[Any]], Embed],
-        items_per_page: int = 10,
-        attached_message: Message | None = None,
-        ephemeral=True,
-        select_options_builder: Callable[[list[Any]], list[SelectOption]] | None = None,
-        select_callback: Callable[
-            [Interaction, "BasePaginationView", list[str]], Awaitable[None]
-        ]
-        | None = None,
-        select_placeholder: str = "Select an option...",
-    ):
-        super().__init__(
-            timeout=timeout,
-            metadata=metadata,
-            data=data,
-            format_page=format_page,
-            items_per_page=items_per_page,
-            attached_message=attached_message,
-            ephemeral=ephemeral,
-            select_callback=select_callback,
-            select_options_builder=select_options_builder,
-            select_placeholder=select_placeholder,
-        )
-
-
-class FilterbyTagPaginationView(BasePaginationView[FilterbyTagPaginationMetaData]):
-    def __init__(
-        self,
-        *,
-        timeout: int | None = 180,
-        metadata: FilterbyTagPaginationMetaData,
-        data: list[Any],
-        format_page: Callable[[FilterbyTagPaginationMetaData, list[Any]], Embed],
-        items_per_page: int = 10,
-        attached_message: Message | None = None,
-        ephemeral=True,
-        select_options_builder: Callable[[list[Any]], list[SelectOption]] | None = None,
-        select_callback: Callable[
-            [Interaction, "BasePaginationView", list[str]], Awaitable[None]
-        ]
-        | None = None,
-        select_placeholder: str = "Select an option...",
-    ):
-        super().__init__(
-            timeout=timeout,
-            metadata=metadata,
-            data=data,
-            format_page=format_page,
-            items_per_page=items_per_page,
-            attached_message=attached_message,
-            ephemeral=ephemeral,
-            select_callback=select_callback,
-            select_options_builder=select_options_builder,
-            select_placeholder=select_placeholder,
-        )
-
-
-class AllTagsPaginationView(BasePaginationView[AllTagsPaginationMetaData]):
-    def __init__(
-        self,
-        *,
-        timeout: int | None = 180,
-        metadata: AllTagsPaginationMetaData,
-        data: list[Any],
-        format_page: Callable[[AllTagsPaginationMetaData, list[Any]], Embed],
-        items_per_page: int = 10,
-        attached_message: Message | None = None,
-        ephemeral=True,
-        select_options_builder: Callable[[list[Any]], list[SelectOption]] | None = None,
-        select_callback: Callable[
-            [Interaction, "BasePaginationView", list[str]], Awaitable[None]
-        ]
-        | None = None,
-        select_placeholder: str = "Select an option...",
-    ):
-        super().__init__(
-            timeout=timeout,
-            metadata=metadata,
-            data=data,
-            format_page=format_page,
-            items_per_page=items_per_page,
-            attached_message=attached_message,
-            ephemeral=ephemeral,
-            select_callback=select_callback,
-            select_options_builder=select_options_builder,
-            select_placeholder=select_placeholder,
-        )
-
-
-class UserSubmissionPaginationView(
-    BasePaginationView[UserSubmissionPaginationMetaData]
-):
-    def __init__(
-        self,
-        *,
-        timeout: int | None = 180,
-        metadata: UserSubmissionPaginationMetaData,
-        data: list[Any],
-        format_page: Callable[[UserSubmissionPaginationMetaData, list[Any]], Embed],
-        items_per_page: int = 10,
-        attached_message: Message | None = None,
-        ephemeral=True,
-        select_options_builder: Callable[[list[Any]], list[SelectOption]] | None = None,
-        select_callback: Callable[
-            [Interaction, "BasePaginationView", list[str]], Awaitable[None]
-        ]
-        | None = None,
-        select_placeholder: str = "Select an option...",
-    ):
-        super().__init__(
-            timeout=timeout,
-            metadata=metadata,
-            data=data,
-            format_page=format_page,
-            items_per_page=items_per_page,
-            attached_message=attached_message,
-            ephemeral=ephemeral,
-            select_callback=select_callback,
-            select_options_builder=select_options_builder,
-            select_placeholder=select_placeholder,
-        )
+ProblemTitlePaginationView = BasePaginationView[ProblemTitlePageMeta]
+FilterbyTagPaginationView = BasePaginationView[FilterbyTagPageMeta]
+AllTagsPaginationView = BasePaginationView[AllTagsPageMeta]
+UserSubmissionPaginationView = BasePaginationView[UserSubmissionPageMeta]
