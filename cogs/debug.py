@@ -21,7 +21,9 @@ class Debug(commands.Cog):
         logger.error(f"Error in Debug Cog: {error}", exc_info=error)
         # This handler sees every error the cog raises, not just check
         # failures, so the reply has to come from the exception itself.
-        message = getattr(error, "message", "指令執行時發生錯誤。")
+        message = getattr(
+            error, "message", "An error occurred while running this command."
+        )
         if interaction.response.is_done():
             await interaction.followup.send(message, ephemeral=True)
         else:

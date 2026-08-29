@@ -13,7 +13,10 @@ logger = logging.getLogger(__name__)
 class UserNotAdministrator(AppCommandError):
     """Custom exception raised when a user is not a server administrator or the bot owner."""
 
-    def __init__(self, message: str = "您沒有權限使用此指令，需要伺服器管理員權限。"):
+    def __init__(
+        self,
+        message: str = "You do not have permission to use this command; it requires server administrator permissions.",
+    ):
         self.message = message
         super().__init__(self.message)
 
@@ -29,7 +32,9 @@ class IsNotDev(CommandError, AppCommandError):
     and the interaction times out with no reply.
     """
 
-    def __init__(self, message: str = "還想偷用奇怪的指令阿"):
+    def __init__(
+        self, message: str = "Trying to sneak into the dev commands, are you?"
+    ):
         self.message = message
         super().__init__(self.message)
 
