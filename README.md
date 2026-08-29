@@ -2,6 +2,8 @@
 
 ![LeetCode](https://img.shields.io/badge/LeetCode-%23000000.svg?style=for-the-badge&logo=LeetCode&logoColor=#d16c06)
 ![tests](https://github.com/xDDoubleTea/LeetCodeBot/actions/workflows/pytest.yml/badge.svg)
+![lint](https://github.com/xDDoubleTea/LeetCodeBot/actions/workflows/ruff.yml/badge.svg)
+![migrations](https://github.com/xDDoubleTea/LeetCodeBot/actions/workflows/alembic.yml/badge.svg)
 ![docs deploy](https://github.com/xDDoubleTea/LeetCodeBot/actions/workflows/docs.yml/badge.svg)
 
 ## AI assistant
