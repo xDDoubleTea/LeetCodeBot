@@ -19,6 +19,13 @@ class Debug(commands.Cog):
         self, interaction: discord.Interaction, error: app_commands.AppCommandError
     ) -> None:
         logger.error(f"Error in Debug Cog: {error}", exc_info=error)
+        # This handler sees every error the cog raises, not just check
+        # failures, so the reply has to come from the exception itself.
+        message = getattr(error, "message", "指令執行時發生錯誤。")
+        if interaction.response.is_done():
+            await interaction.followup.send(message, ephemeral=True)
+        else:
+            await interaction.response.send_message(message, ephemeral=True)
 
     debug = app_commands.Group(
         name="debug",
