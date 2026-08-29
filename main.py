@@ -84,8 +84,19 @@ class LeetCodeBot(commands.Bot):
         logger.info("Caches initialized.")
 
     async def close(self) -> None:
-        await super().close()
-        await self.engine.dispose()
+        # engine.dispose() has to run on every path out of here. aiosqlite's
+        # connection worker is a non-daemon thread, so an undisposed engine
+        # outlives asyncio.run() and blocks the interpreter in
+        # threading._shutdown() forever.
+        try:
+            await super().close()
+        finally:
+            try:
+                session = getattr(self, "session", None)
+                if session is not None:
+                    await session.close()
+            finally:
+                await self.engine.dispose()
 
     async def on_ready(self):
         self.tree.copy_global_to(guild=MY_GUILD)
@@ -103,38 +114,42 @@ class LeetCodeBot(commands.Bot):
 async def main():
     bot = LeetCodeBot()
 
-    async def shutdown(sig: signal.Signals, loop: asyncio.AbstractEventLoop):
-        if sig:
-            logger.info(f"Received exit signal {sig.name}...")
+    main_task = asyncio.current_task()
+    assert main_task is not None
+    stopping = False
 
-        for task in asyncio.all_tasks(loop):
-            task.cancel()
-            logger.info(f"Cancelling task {task.get_name()}...")
+    def request_stop(sig: signal.Signals) -> None:
+        nonlocal stopping
+        if stopping:
+            logger.warning(
+                f"Received {sig.name} again, shutdown already in progress..."
+            )
+            return
+        stopping = True
+        logger.info(f"Received exit signal {sig.name}...")
+        # Only this task is cancelled: bot.close() tears the gateway, the HTTP
+        # session and the engine down in order, and cancelling every task would
+        # interrupt that teardown half-way. The guard above keeps a second
+        # Ctrl+C from cancelling us again mid-shutdown.
+        main_task.cancel()
 
-        await bot.session.close()
-        await bot.close()
-        logger.info("Shutdown complete.")
-        loop.stop()
-
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     for sig in (signal.SIGINT, signal.SIGTERM):
-        loop.add_signal_handler(
-            sig, lambda s=sig: asyncio.create_task(shutdown(s, loop))
-        )
-
-    async with bot.engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+        loop.add_signal_handler(sig, request_stop, sig)
 
     try:
-        await bot.start(token=bot_token)
+        # Entering the bot's context means close() runs on every exit path,
+        # including a failure inside create_all.
+        async with bot:
+            async with bot.engine.begin() as conn:
+                await conn.run_sync(Base.metadata.create_all)
+
+            await bot.start(token=bot_token)
     except asyncio.CancelledError:
         logger.info("Bot shutdown initiated...")
     except Exception as e:
         logger.exception("An unhandled error occurred:", exc_info=e)
-    finally:
-        if not bot.is_closed():
-            await bot.close()
-            logger.info("Bot closed.")
+    logger.info("Shutdown complete.")
 
 
 if __name__ == "__main__":
