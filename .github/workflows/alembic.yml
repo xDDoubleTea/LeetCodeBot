@@ -1,0 +1,57 @@
+name: Migrations
+
+on:
+  push:
+    branches: ['main']
+  pull_request:
+    branches: ['main']
+
+permissions:
+  contents: read
+
+env:
+  # A scratch database. The migrations are exercised from empty, so nothing here
+  # touches the deployed one.
+  DATABASE_URL: sqlite+aiosqlite:///./ci-migrations.db
+
+jobs:
+  alembic:
+    name: Alembic
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v10.0.1
+        with:
+          enable-cache: true
+
+      # --no-dev deliberately: the bot applies migrations at startup and the image
+      # is built with UV_NO_DEV=1, so this also proves alembic and its imports are
+      # reachable from the runtime dependencies alone.
+      - name: Install runtime dependencies
+        run: uv sync --no-dev
+
+      # Two branches that each add a revision from the same parent produce two
+      # heads. `upgrade head` then fails on a running bot rather than here.
+      - name: Exactly one migration head
+        run: |
+          uv run --no-dev alembic heads
+          count=$(uv run --no-dev alembic heads | grep -c '(head)')
+          if [ "$count" -ne 1 ]; then
+            echo "::error::Found $count migration heads, expected 1. Two revisions share a parent; reconcile them with 'uv run alembic merge heads'."
+            exit 1
+          fi
+
+      - name: Upgrade from empty
+        run: uv run --no-dev alembic upgrade head
+
+      # Catches a model changed without a revision. tests/test_migrations.py
+      # asserts the same thing; this reports it in alembic's own words.
+      - name: No un-generated model changes
+        run: uv run --no-dev alembic check
+
+      # A downgrade that raises is only discovered when it is needed, which is the
+      # worst moment to discover it.
+      - name: Downgrade to base
+        run: uv run --no-dev alembic downgrade base
