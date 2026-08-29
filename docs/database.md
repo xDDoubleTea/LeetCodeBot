@@ -89,9 +89,15 @@ the stamp is done.
 
 ## SQLite
 
-SQLite cannot alter or drop a column in place, so alembic rebuilds the whole table.
-This is enabled by `render_as_batch=True` in `alembic/env.py`, and generated revisions
-use `with op.batch_alter_table(...)`.
+SQLite has almost no `ALTER TABLE` support, so alembic emulates it by reflecting the
+table, creating a new one with the change applied, copying the rows across, dropping
+the original and renaming it. `render_as_batch=True` in `alembic/env.py` makes
+autogenerate wrap operations in `with op.batch_alter_table(...)` so this can happen.
 
-The rebuild has to name every constraint it recreates, which is why `db/base.py` sets a
-`naming_convention` on `Base.metadata`.
+Adding a column does not trigger the rebuild — it is the one column-level `ALTER`
+SQLite supports natively. Dropping or altering one does.
+
+`db/base.py` sets a `naming_convention` on `Base.metadata` because SQLite permits
+unnamed constraints, and alembic lists "anonymously named constraints" among the things
+autogenerate cannot detect. An unnamed constraint also cannot be targeted by
+`drop_constraint()`. Deterministic names are what keep constraints alterable later.

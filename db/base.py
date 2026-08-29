@@ -7,9 +7,9 @@ logger = logging.getLogger(__name__)
 
 
 class Base(DeclarativeBase):
-    # SQLite cannot alter or drop a column in place, so alembic rebuilds the whole
-    # table instead, and the rebuild has to name every constraint it recreates.
-    # Leaving the names to the backend makes those migrations impossible to write.
+    # SQLite allows unnamed constraints, and alembic can neither detect changes to
+    # an anonymously named constraint nor target one with drop_constraint. Naming
+    # them deterministically is what keeps them alterable later.
     metadata = MetaData(
         naming_convention={
             "ix": "ix_%(column_0_label)s",
