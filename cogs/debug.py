@@ -1,6 +1,5 @@
 import logging
 
-import discord
 from discord import Interaction, app_commands
 from discord.ext import commands
 
@@ -14,20 +13,6 @@ class Debug(commands.Cog):
     def __init__(self, bot: LeetCodeBot) -> None:
         self.bot = bot
         self.database_manager = bot.database_manager
-
-    async def cog_app_command_error(
-        self, interaction: discord.Interaction, error: app_commands.AppCommandError
-    ) -> None:
-        logger.error(f"Error in Debug Cog: {error}", exc_info=error)
-        # This handler sees every error the cog raises, not just check
-        # failures, so the reply has to come from the exception itself.
-        message = getattr(
-            error, "message", "An error occurred while running this command."
-        )
-        if interaction.response.is_done():
-            await interaction.followup.send(message, ephemeral=True)
-        else:
-            await interaction.response.send_message(message, ephemeral=True)
 
     debug = app_commands.Group(
         name="debug",
@@ -48,7 +33,7 @@ class Debug(commands.Cog):
 
     @debug.command(name="print_problems_cache", description="Print the problems cache")
     @is_me_app_command()
-    async def print_problems_cache(self, interaction: discord.Interaction) -> None:
+    async def print_problems_cache(self, interaction: Interaction) -> None:
         """Prints the current problems cache to the console."""
         await interaction.response.send_message(
             "Printing problems cache to console...", ephemeral=True
