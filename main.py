@@ -149,7 +149,8 @@ async def main():
         logger.info("Bot shutdown initiated...")
     except Exception as e:
         logger.exception("An unhandled error occurred:", exc_info=e)
-    logger.info("Shutdown complete.")
+    finally:
+        logger.info("Shutdown complete.")
 
 
 if __name__ == "__main__":
