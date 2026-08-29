@@ -1,6 +1,6 @@
 import logging
 from collections.abc import Awaitable, Callable
-from typing import Any, Generic, TypeVar
+from typing import Any
 
 import discord
 from discord import Embed, Interaction, Message, SelectOption
@@ -16,25 +16,27 @@ from models.pagination import (
 )
 
 logger = logging.getLogger(__name__)
-T_meta = TypeVar("T_meta", bound=BasePaginationMetaData)
+
+# Every view takes the same callback, and spelling it out inline wraps over four
+# lines at the configured line length.
+type SelectCallback = Callable[
+    [Interaction, "BasePaginationView", list[str]], Awaitable[None]
+]
 
 
-class BasePaginationView(View, Generic[T_meta]):
+class BasePaginationView[MetaT: BasePaginationMetaData](View):
     def __init__(
         self,
         *,
         timeout: int | None = 180,
-        metadata: T_meta,
+        metadata: MetaT,
         data: list[Any],
-        format_page: Callable[[T_meta, list[Any]], Embed],
+        format_page: Callable[[MetaT, list[Any]], Embed],
         items_per_page: int = 10,
         attached_message: Message | None = None,
         ephemeral=True,
         select_options_builder: Callable[[list[Any]], list[SelectOption]] | None = None,
-        select_callback: Callable[
-            [Interaction, "BasePaginationView", list[str]], Awaitable[None]
-        ]
-        | None = None,
+        select_callback: SelectCallback | None = None,
         select_placeholder: str = "Select an option...",
     ):
         super().__init__(timeout=timeout)
@@ -198,131 +200,7 @@ class BasePaginationView(View, Generic[T_meta]):
                 return
 
 
-class ProblemTitlePaginationView(BasePaginationView[ProblemTitlePaginationMetaData]):
-    def __init__(
-        self,
-        *,
-        timeout: int | None = 180,
-        metadata: ProblemTitlePaginationMetaData,
-        data: list[Any],
-        format_page: Callable[[ProblemTitlePaginationMetaData, list[Any]], Embed],
-        items_per_page: int = 10,
-        attached_message: Message | None = None,
-        ephemeral=True,
-        select_options_builder: Callable[[list[Any]], list[SelectOption]] | None = None,
-        select_callback: Callable[
-            [Interaction, "BasePaginationView", list[str]], Awaitable[None]
-        ]
-        | None = None,
-        select_placeholder: str = "Select an option...",
-    ):
-        super().__init__(
-            timeout=timeout,
-            metadata=metadata,
-            data=data,
-            format_page=format_page,
-            items_per_page=items_per_page,
-            attached_message=attached_message,
-            ephemeral=ephemeral,
-            select_callback=select_callback,
-            select_options_builder=select_options_builder,
-            select_placeholder=select_placeholder,
-        )
-
-
-class FilterbyTagPaginationView(BasePaginationView[FilterbyTagPaginationMetaData]):
-    def __init__(
-        self,
-        *,
-        timeout: int | None = 180,
-        metadata: FilterbyTagPaginationMetaData,
-        data: list[Any],
-        format_page: Callable[[FilterbyTagPaginationMetaData, list[Any]], Embed],
-        items_per_page: int = 10,
-        attached_message: Message | None = None,
-        ephemeral=True,
-        select_options_builder: Callable[[list[Any]], list[SelectOption]] | None = None,
-        select_callback: Callable[
-            [Interaction, "BasePaginationView", list[str]], Awaitable[None]
-        ]
-        | None = None,
-        select_placeholder: str = "Select an option...",
-    ):
-        super().__init__(
-            timeout=timeout,
-            metadata=metadata,
-            data=data,
-            format_page=format_page,
-            items_per_page=items_per_page,
-            attached_message=attached_message,
-            ephemeral=ephemeral,
-            select_callback=select_callback,
-            select_options_builder=select_options_builder,
-            select_placeholder=select_placeholder,
-        )
-
-
-class AllTagsPaginationView(BasePaginationView[AllTagsPaginationMetaData]):
-    def __init__(
-        self,
-        *,
-        timeout: int | None = 180,
-        metadata: AllTagsPaginationMetaData,
-        data: list[Any],
-        format_page: Callable[[AllTagsPaginationMetaData, list[Any]], Embed],
-        items_per_page: int = 10,
-        attached_message: Message | None = None,
-        ephemeral=True,
-        select_options_builder: Callable[[list[Any]], list[SelectOption]] | None = None,
-        select_callback: Callable[
-            [Interaction, "BasePaginationView", list[str]], Awaitable[None]
-        ]
-        | None = None,
-        select_placeholder: str = "Select an option...",
-    ):
-        super().__init__(
-            timeout=timeout,
-            metadata=metadata,
-            data=data,
-            format_page=format_page,
-            items_per_page=items_per_page,
-            attached_message=attached_message,
-            ephemeral=ephemeral,
-            select_callback=select_callback,
-            select_options_builder=select_options_builder,
-            select_placeholder=select_placeholder,
-        )
-
-
-class UserSubmissionPaginationView(
-    BasePaginationView[UserSubmissionPaginationMetaData]
-):
-    def __init__(
-        self,
-        *,
-        timeout: int | None = 180,
-        metadata: UserSubmissionPaginationMetaData,
-        data: list[Any],
-        format_page: Callable[[UserSubmissionPaginationMetaData, list[Any]], Embed],
-        items_per_page: int = 10,
-        attached_message: Message | None = None,
-        ephemeral=True,
-        select_options_builder: Callable[[list[Any]], list[SelectOption]] | None = None,
-        select_callback: Callable[
-            [Interaction, "BasePaginationView", list[str]], Awaitable[None]
-        ]
-        | None = None,
-        select_placeholder: str = "Select an option...",
-    ):
-        super().__init__(
-            timeout=timeout,
-            metadata=metadata,
-            data=data,
-            format_page=format_page,
-            items_per_page=items_per_page,
-            attached_message=attached_message,
-            ephemeral=ephemeral,
-            select_callback=select_callback,
-            select_options_builder=select_options_builder,
-            select_placeholder=select_placeholder,
-        )
+ProblemTitlePaginationView = BasePaginationView[ProblemTitlePaginationMetaData]
+FilterbyTagPaginationView = BasePaginationView[FilterbyTagPaginationMetaData]
+AllTagsPaginationView = BasePaginationView[AllTagsPaginationMetaData]
+UserSubmissionPaginationView = BasePaginationView[UserSubmissionPaginationMetaData]
