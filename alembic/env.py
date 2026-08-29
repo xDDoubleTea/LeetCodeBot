@@ -1,6 +1,8 @@
 import asyncio
+import os
 from logging.config import fileConfig
 
+from dotenv import load_dotenv
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
@@ -17,17 +19,21 @@ import db.problem
 import db.problem_threads
 import db.thread_channel  # noqa: F401
 from alembic import context
-from config.secrets import DATABASE_URL
 from db.base import Base
 
 config = context.config
 
-# One source of truth with main.py, rather than a second copy in alembic.ini.
-# Only as a default though: a caller that sets the URL explicitly -- the drift test
-# pointing at a scratch database, say -- must not be silently redirected at the real
-# one.
-if not config.get_main_option("sqlalchemy.url", None):
-    config.set_main_option("sqlalchemy.url", DATABASE_URL)
+# The URL comes from the same .env the bot reads, rather than a second copy in
+# alembic.ini. Read straight from the environment instead of through
+# config.secrets: that module also requires BOT_TOKEN at import, and applying a
+# migration should not need a Discord token.
+#
+# Only a default, though. A caller that sets the URL explicitly -- the drift test
+# pointing at a scratch database, say -- must not be redirected at the real one.
+load_dotenv()
+_database_url = os.getenv("DATABASE_URL")
+if _database_url and not config.get_main_option("sqlalchemy.url", None):
+    config.set_main_option("sqlalchemy.url", _database_url)
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
