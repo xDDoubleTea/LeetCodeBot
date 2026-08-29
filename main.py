@@ -2,15 +2,18 @@ import asyncio
 import logging
 import os
 import signal
+from pathlib import Path
 
 import aiohttp
 import discord
 import re2
+from alembic.config import Config
 from discord.ext import commands
 from sqlalchemy import event
-from sqlalchemy.engine import Engine
-from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.engine import Connection, Engine
+from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
+from alembic import command
 from config.constants import MY_GUILD, command_prefix
 from config.logger import setup_logger
 from config.secrets import DATABASE_URL, bot_token, debug
@@ -18,11 +21,33 @@ from core.leetcode_api import LeetCodeAPI
 from core.leetcode_problem import LeetCodeProblemManager
 from core.problem_threads import ProblemThreadsManager
 from db.async_db_manager import AsyncDatabaseManager
-from db.base import Base
 from utils.error_handlers import ErrorHandlingTree, handle_command_error
 
-logger = logging.getLogger("main")
-setup_logger(log_level=logging.DEBUG if debug else logging.INFO)
+logger = logging.getLogger(__name__)
+intents = discord.Intents.all()
+
+
+def _upgrade_to_head(connection: Connection) -> None:
+    # alembic.ini is resolved from this file rather than the working directory: the
+    # container runs from /app, but a local `uv run main.py` should not depend on
+    # where it was launched from.
+    cfg = Config(str(Path(__file__).parent / "alembic.ini"))
+    # Hand env.py the connection we already hold, so it does not open a second one
+    # against the same SQLite file.
+    cfg.attributes["connection"] = connection
+    command.upgrade(cfg, "head")
+
+
+async def run_migrations(engine: AsyncEngine) -> None:
+    """Bring the database up to the latest revision.
+
+    This replaces Base.metadata.create_all, which only ever created missing tables
+    and so could not apply any change to a database that already existed.
+    """
+    logger.info("Applying database migrations...")
+    async with engine.begin() as conn:
+        await conn.run_sync(_upgrade_to_head)
+    logger.info("Database is up to date.")
 
 
 @event.listens_for(Engine, "connect")
@@ -38,7 +63,6 @@ def sqlite_engine_connect(dbapi_connection, connection_record):
 
 class LeetCodeBot(commands.Bot):
     def __init__(self):
-        intents = discord.Intents.all()
         super().__init__(
             command_prefix=command_prefix,
             intents=intents,
@@ -122,6 +146,7 @@ class LeetCodeBot(commands.Bot):
 
 
 async def main():
+    setup_logger(log_level=logging.DEBUG if debug else logging.INFO)
     bot = LeetCodeBot()
 
     main_task = asyncio.current_task()
@@ -149,10 +174,9 @@ async def main():
 
     try:
         # Entering the bot's context means close() runs on every exit path,
-        # including a failure inside create_all.
+        # including a failed migration.
         async with bot:
-            async with bot.engine.begin() as conn:
-                await conn.run_sync(Base.metadata.create_all)
+            await run_migrations(bot.engine)
 
             await bot.start(token=bot_token)
     except asyncio.CancelledError:

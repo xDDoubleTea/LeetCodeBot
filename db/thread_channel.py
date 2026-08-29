@@ -24,7 +24,7 @@ class GuildForumChannel(Base):
 class GuildForumChannelTags(Base):
     __tablename__ = "guild_forum_channel_tags"
     id: Mapped[int] = mapped_column(primary_key=True)
-    forum_channel_id: Mapped[ForeignKey] = mapped_column(
+    forum_channel_id: Mapped[int] = mapped_column(
         ForeignKey(GuildForumChannel.id, ondelete="CASCADE"), nullable=False
     )
     tag_name: Mapped[str] = mapped_column(nullable=False)

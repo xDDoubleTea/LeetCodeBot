@@ -52,8 +52,16 @@ Ensure [git](https://git-scm.com/install/), [uv](https://docs.astral.sh/uv/getti
 ```bash
 git clone https://github.com/xDDoubleTea/LeetCodeBot
 cd LeetCodeBot
+cp .env.example .env    # then fill in BOT_TOKEN
 uv run main.py
 ```
+
+The bot creates the database and applies any outstanding migrations on startup, so a
+fresh clone needs no separate database setup.
+
+If you already have a `db/*.db` from before alembic was adopted, run
+`uv run alembic stamp head` once before starting the bot. See
+[the database guide](docs/database.md) for schema changes and the alembic commands.
 
 ### Visual studio code
 
