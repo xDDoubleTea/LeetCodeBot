@@ -65,8 +65,27 @@ uv run alembic stamp head
 ```
 
 This is a one-time step, needed for the deployed database and for any local
-`db/testbot.db` that predates alembic. In Docker, `restart: unless-stopped` means a bot
-that fails this way restarts forever, so do the stamp before pulling the change.
+`db/testbot.db` that predates alembic.
+
+### Deploying to a running bot
+
+The stamp has to happen after the pull, which is what brings `alembic.ini` and
+`alembic/`, and before the new container starts. Pulling does not disturb the running
+container, so there is no rush between the two.
+
+```bash
+git pull
+uv sync                        # installs alembic
+uv run alembic stamp head      # ./db is bind-mounted, so this is the live database
+docker compose up -d --build
+```
+
+The new container then runs `upgrade head`, finds the version row already at the
+baseline, and starts without applying anything.
+
+Starting the new container first is recoverable but noisy: the bot fails on the
+`already exists` error above, and `restart: unless-stopped` retries it in a loop until
+the stamp is done.
 
 ## SQLite
 
