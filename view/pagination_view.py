@@ -7,12 +7,12 @@ from discord import Embed, Interaction, Message, SelectOption
 from discord.ui import Button, Select, View, button
 
 from models.pagination import (
-    AllTagsPaginationMetaData,
-    BasePaginationMetaData,
-    FilterbyTagPaginationMetaData,
-    PaginationViewButtonLayouts,
-    ProblemTitlePaginationMetaData,
-    UserSubmissionPaginationMetaData,
+    AllTagsPageMeta,
+    BasePageMetaData,
+    FilterbyTagPageMeta,
+    PageButtons,
+    ProblemTitlePageMeta,
+    UserSubmissionPageMeta,
 )
 
 logger = logging.getLogger(__name__)
@@ -24,7 +24,7 @@ type SelectCallback = Callable[
 ]
 
 
-class BasePaginationView[MetaT: BasePaginationMetaData](View):
+class BasePaginationView[MetaT: BasePageMetaData](View):
     def __init__(
         self,
         *,
@@ -118,15 +118,15 @@ class BasePaginationView[MetaT: BasePaginationMetaData](View):
         for item in self.children:
             if isinstance(item, Button):
                 match item.custom_id:
-                    case PaginationViewButtonLayouts.FIRST_PAGE.name:
+                    case PageButtons.FIRST_PAGE.name:
                         item.disabled = self.current_page <= 0
-                    case PaginationViewButtonLayouts.PREV_PAGE.name:
+                    case PageButtons.PREV_PAGE.name:
                         item.disabled = self.current_page <= 0
-                    case PaginationViewButtonLayouts.PAGE_DISPLAY.name:
+                    case PageButtons.PAGE_DISPLAY.name:
                         item.label = f"{self.current_page + 1} / {self.total_pages}"
-                    case PaginationViewButtonLayouts.NEXT_PAGE.name:
+                    case PageButtons.NEXT_PAGE.name:
                         item.disabled = self.current_page >= self.total_pages - 1
-                    case PaginationViewButtonLayouts.LAST_PAGE.name:
+                    case PageButtons.LAST_PAGE.name:
                         item.disabled = self.current_page >= self.total_pages - 1
 
     async def _update_page(self, interaction: Interaction):
@@ -139,7 +139,7 @@ class BasePaginationView[MetaT: BasePaginationMetaData](View):
         label="First page⏮️",
         style=discord.ButtonStyle.blurple,
         disabled=True,
-        custom_id=PaginationViewButtonLayouts.FIRST_PAGE.name,
+        custom_id=PageButtons.FIRST_PAGE.name,
     )
     async def first_callback(self, interaction: Interaction, button: Button):
         self.current_page = 0
@@ -148,7 +148,7 @@ class BasePaginationView[MetaT: BasePaginationMetaData](View):
     @button(
         label="Prev◀️",
         style=discord.ButtonStyle.blurple,
-        custom_id=PaginationViewButtonLayouts.PREV_PAGE.name,
+        custom_id=PageButtons.PREV_PAGE.name,
     )
     async def pre_callback(self, interaction: Interaction, button: Button):
         self.current_page = max(self.current_page - 1, 0)
@@ -157,7 +157,7 @@ class BasePaginationView[MetaT: BasePaginationMetaData](View):
     @button(
         label="1/1",
         style=discord.ButtonStyle.blurple,
-        custom_id=PaginationViewButtonLayouts.PAGE_DISPLAY.name,
+        custom_id=PageButtons.PAGE_DISPLAY.name,
     )
     async def page_display_btn(self, interaction: Interaction, button: Button):
         await interaction.response.defer(ephemeral=self.ephemeral)
@@ -165,7 +165,7 @@ class BasePaginationView[MetaT: BasePaginationMetaData](View):
     @button(
         label="Next▶️",
         style=discord.ButtonStyle.blurple,
-        custom_id=PaginationViewButtonLayouts.NEXT_PAGE.name,
+        custom_id=PageButtons.NEXT_PAGE.name,
     )
     async def next_callback(self, interaction: Interaction, button: Button):
         self.current_page = min(self.current_page + 1, self.total_pages - 1)
@@ -174,7 +174,7 @@ class BasePaginationView[MetaT: BasePaginationMetaData](View):
     @button(
         label="Last page⏭️",
         style=discord.ButtonStyle.blurple,
-        custom_id=PaginationViewButtonLayouts.LAST_PAGE.name,
+        custom_id=PageButtons.LAST_PAGE.name,
     )
     async def last_callback(self, interaction: Interaction, button: Button):
         self.current_page = self.total_pages - 1
@@ -185,10 +185,7 @@ class BasePaginationView[MetaT: BasePaginationMetaData](View):
             try:
                 for item in self.children:
                     if isinstance(item, Button):
-                        if (
-                            item.custom_id
-                            == PaginationViewButtonLayouts.PAGE_DISPLAY.name
-                        ):
+                        if item.custom_id == PageButtons.PAGE_DISPLAY.name:
                             item.label = "Expired..."
                         item.style = discord.ButtonStyle.grey
                         item.disabled = True
@@ -200,7 +197,7 @@ class BasePaginationView[MetaT: BasePaginationMetaData](View):
                 return
 
 
-ProblemTitlePaginationView = BasePaginationView[ProblemTitlePaginationMetaData]
-FilterbyTagPaginationView = BasePaginationView[FilterbyTagPaginationMetaData]
-AllTagsPaginationView = BasePaginationView[AllTagsPaginationMetaData]
-UserSubmissionPaginationView = BasePaginationView[UserSubmissionPaginationMetaData]
+ProblemTitlePaginationView = BasePaginationView[ProblemTitlePageMeta]
+FilterbyTagPaginationView = BasePaginationView[FilterbyTagPageMeta]
+AllTagsPaginationView = BasePaginationView[AllTagsPageMeta]
+UserSubmissionPaginationView = BasePaginationView[UserSubmissionPageMeta]
