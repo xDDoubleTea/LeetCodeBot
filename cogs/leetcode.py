@@ -69,19 +69,6 @@ class LeetCode(commands.Cog):
     async def cog_unload(self) -> None:
         self.daily_cache_refresh.cancel()
 
-    async def cog_app_command_error(
-        self, interaction: Interaction, error: app_commands.AppCommandError
-    ):
-        logger.error(error.__cause__)
-        if isinstance(error, app_commands.TransformerError):
-            await interaction.response.send_message(
-                str(error.__cause__), ephemeral=True
-            )
-        else:
-            await interaction.response.send_message(
-                "An error occurred.", ephemeral=True
-            )
-
     def format_submissions(
         self,
         metadata: UserSubmissionPaginationMetaData,
@@ -578,20 +565,6 @@ class LeetCode(commands.Cog):
             )
             await interaction.followup.send(
                 "Something went wrong when fetching user's recent submissions."
-            )
-
-    @set_forum_channel.error
-    async def on_set_forum_error(
-        self, interaction: Interaction, error: app_commands.AppCommandError
-    ) -> None:
-        if isinstance(error, app_commands.errors.MissingPermissions):
-            await interaction.response.send_message(
-                "You do not have the required permissions to use this command.",
-                ephemeral=True,
-            )
-        else:
-            await interaction.response.send_message(
-                f"An error occurred: {error}", ephemeral=True
             )
 
 

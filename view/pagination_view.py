@@ -31,7 +31,10 @@ class BasePaginationView(View, Generic[T_meta]):
         attached_message: Message | None = None,
         ephemeral=True,
         select_options_builder: Callable[[list[Any]], list[SelectOption]] | None = None,
-        select_callback: Callable[[Interaction, "BasePaginationView", list[str]], Awaitable[None]] | None = None,
+        select_callback: Callable[
+            [Interaction, "BasePaginationView", list[str]], Awaitable[None]
+        ]
+        | None = None,
         select_placeholder: str = "Select an option...",
     ):
         super().__init__(timeout=timeout)
@@ -207,7 +210,10 @@ class ProblemTitlePaginationView(BasePaginationView[ProblemTitlePaginationMetaDa
         attached_message: Message | None = None,
         ephemeral=True,
         select_options_builder: Callable[[list[Any]], list[SelectOption]] | None = None,
-        select_callback: Callable[[Interaction, "BasePaginationView", list[str]], Awaitable[None]] | None = None,
+        select_callback: Callable[
+            [Interaction, "BasePaginationView", list[str]], Awaitable[None]
+        ]
+        | None = None,
         select_placeholder: str = "Select an option...",
     ):
         super().__init__(
@@ -236,7 +242,10 @@ class FilterbyTagPaginationView(BasePaginationView[FilterbyTagPaginationMetaData
         attached_message: Message | None = None,
         ephemeral=True,
         select_options_builder: Callable[[list[Any]], list[SelectOption]] | None = None,
-        select_callback: Callable[[Interaction, "BasePaginationView", list[str]], Awaitable[None]] | None = None,
+        select_callback: Callable[
+            [Interaction, "BasePaginationView", list[str]], Awaitable[None]
+        ]
+        | None = None,
         select_placeholder: str = "Select an option...",
     ):
         super().__init__(
@@ -265,7 +274,10 @@ class AllTagsPaginationView(BasePaginationView[AllTagsPaginationMetaData]):
         attached_message: Message | None = None,
         ephemeral=True,
         select_options_builder: Callable[[list[Any]], list[SelectOption]] | None = None,
-        select_callback: Callable[[Interaction, "BasePaginationView", list[str]], Awaitable[None]] | None = None,
+        select_callback: Callable[
+            [Interaction, "BasePaginationView", list[str]], Awaitable[None]
+        ]
+        | None = None,
         select_placeholder: str = "Select an option...",
     ):
         super().__init__(
@@ -296,7 +308,10 @@ class UserSubmissionPaginationView(
         attached_message: Message | None = None,
         ephemeral=True,
         select_options_builder: Callable[[list[Any]], list[SelectOption]] | None = None,
-        select_callback: Callable[[Interaction, "BasePaginationView", list[str]], Awaitable[None]] | None = None,
+        select_callback: Callable[
+            [Interaction, "BasePaginationView", list[str]], Awaitable[None]
+        ]
+        | None = None,
         select_placeholder: str = "Select an option...",
     ):
         super().__init__(

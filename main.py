@@ -19,6 +19,7 @@ from core.leetcode_problem import LeetCodeProblemManager
 from core.problem_threads import ProblemThreadsManager
 from db.async_db_manager import AsyncDatabaseManager
 from db.base import Base
+from utils.error_handlers import ErrorHandlingTree, handle_command_error
 
 logger = logging.getLogger("main")
 setup_logger(log_level=logging.DEBUG if debug else logging.INFO)
@@ -38,7 +39,11 @@ def sqlite_engine_connect(dbapi_connection, connection_record):
 class LeetCodeBot(commands.Bot):
     def __init__(self):
         intents = discord.Intents.all()
-        super().__init__(command_prefix=command_prefix, intents=intents)
+        super().__init__(
+            command_prefix=command_prefix,
+            intents=intents,
+            tree_cls=ErrorHandlingTree,
+        )
         self.engine = create_async_engine(
             DATABASE_URL, echo=debug, hide_parameters=True
         )
@@ -82,6 +87,11 @@ class LeetCodeBot(commands.Bot):
         all_topics_dict = await self.leetcode_problem_manger.get_all_topics_from_db()
         self.tag_cache = [topic.tag_name for topic in all_topics_dict.values()]
         logger.info("Caches initialized.")
+
+    async def on_command_error(
+        self, ctx: commands.Context, error: commands.CommandError
+    ) -> None:
+        await handle_command_error(ctx, error)
 
     async def close(self) -> None:
         # engine.dispose() has to run on every path out of here. aiosqlite's
