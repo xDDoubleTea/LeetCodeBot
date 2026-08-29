@@ -45,7 +45,8 @@ async def test_adds_tags_to_an_already_stored_problem(database_manager):
 
     await manager.add_problem_to_db(make_problem(), {TopicTags(tag_name="Array")})
     problem = await manager.add_problem_to_db(
-        make_problem(), {TopicTags(tag_name="Array"), TopicTags(tag_name="Two Pointers")}
+        make_problem(),
+        {TopicTags(tag_name="Array"), TopicTags(tag_name="Two Pointers")},
     )
 
     assert sorted(tag.tag_name for tag in problem.tags) == ["Array", "Two Pointers"]
