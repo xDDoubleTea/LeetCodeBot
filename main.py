@@ -14,7 +14,7 @@ from sqlalchemy.engine import Connection, Engine
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
 from alembic import command
-from config.constants import MY_GUILD, command_prefix
+from config.constants import command_prefix
 from config.logger import setup_logger
 from config.secrets import DATABASE_URL, bot_token, debug
 from core.leetcode_api import LeetCodeAPI
@@ -129,8 +129,11 @@ class LeetCodeBot(commands.Bot):
                 await self.engine.dispose()
 
     async def on_ready(self):
-        self.tree.copy_global_to(guild=MY_GUILD)
-        await self.tree.sync(guild=MY_GUILD)
+        # No tree sync here. on_ready fires again on every reconnect, and syncing
+        # a guild copy of every global command is what put two of each in the
+        # picker: Discord lists guild-scoped and global commands side by side
+        # rather than letting one shadow the other. Publishing the tree is a
+        # deliberate act now -- see >sync_app_commands.
         logger.info("Logged in as %s!", self.user)
         await self.change_presence(
             status=discord.Status.online,

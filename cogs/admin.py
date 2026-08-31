@@ -1,5 +1,6 @@
 import logging
 
+import discord
 from discord.ext import commands
 from discord.ext.commands import Cog, Context, ExtensionNotFound
 from discord.ext.commands.core import ExtensionFailed
@@ -73,10 +74,13 @@ class admin(Cog):
         Publish the command tree.
 
         `global` is what every guild sees, including guilds the bot has not
-        joined yet, so a new server needs no action. `guild` copies the tree to
-        the current server only, which is the fast path while developing --
-        those copies shadow the global ones, so a stale guild copy hides a
-        working global command until it is cleared.
+        joined yet, so a new server needs no action.
+
+        `guild` copies the tree into the current server, which appears
+        immediately and is the fast path while developing. It does not replace
+        the global commands: Discord lists guild-scoped and global commands side
+        by side, so running both leaves two of everything in the picker. Use it
+        on a development server only, and clear it with clear_guild_commands.
         """
         if scope == "guild":
             assert ctx.guild is not None
@@ -91,6 +95,64 @@ class admin(Cog):
 
         synced = await self.bot.tree.sync()
         await ctx.send(f"Synced {len(synced)} app commands globally.")
+
+    @commands.command(name="clear_guild_commands", hidden=True)
+    @is_me_command()
+    async def clear_guild_commands(self, ctx: Context, target: str = "here"):
+        """
+        Remove the guild-scoped copies that duplicate the global commands.
+
+        `here` for this server, `all` for every server the bot is in, or a guild
+        id. The global commands are untouched, so nothing is lost -- the copies
+        were only ever a faster path to the same tree.
+        """
+        if target == "all":
+            guilds: list[discord.abc.Snowflake] = list(self.bot.guilds)
+        elif target == "here":
+            if ctx.guild is None:
+                await ctx.send("Run this in a server, or pass a guild id.")
+                return
+            guilds = [ctx.guild]
+        else:
+            try:
+                guilds = [discord.Object(id=int(target))]
+            except ValueError:
+                await ctx.send("Target must be `here`, `all`, or a guild id.")
+                return
+
+        cleared = 0
+        for guild in guilds:
+            self.bot.tree.clear_commands(guild=guild)
+            await self.bot.tree.sync(guild=guild)
+            cleared += 1
+        await ctx.send(
+            f"Cleared guild-scoped commands from {cleared} server(s). "
+            "The global commands are unaffected."
+        )
+
+    @commands.command(name="app_commands_audit", hidden=True)
+    @is_me_command()
+    async def app_commands_audit(self, ctx: Context):
+        """
+        Report which servers still hold guild-scoped copies.
+
+        One HTTP call per server, so it is worth running once rather than in a
+        loop.
+        """
+        global_commands = await self.bot.tree.fetch_commands()
+        lines = [f"{len(global_commands)} global command(s)."]
+
+        for guild in self.bot.guilds:
+            guild_commands = await self.bot.tree.fetch_commands(guild=guild)
+            if guild_commands:
+                lines.append(
+                    f"- {guild.name} ({guild.id}): {len(guild_commands)} "
+                    "guild-scoped, showing as duplicates"
+                )
+
+        if len(lines) == 1:
+            lines.append("No server holds guild-scoped copies.")
+        await ctx.send("\n".join(lines))
 
 
 async def setup(client):
