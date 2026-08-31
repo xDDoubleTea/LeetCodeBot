@@ -1,33 +1,28 @@
 # Development Guide
 
-<!--toc:start-->
-
-- [Development Guide](#development-guide)
-  - [Setting Up Your Development Environment](#setting-up-your-development-environment)
-    - [Creating a Discord Bot](#creating-a-discord-bot)
-    - [Configuring the Bot](#configuring-the-bot)
-  - [Running the Bot Locally](#running-the-bot-locally)
-  - [Testing](#testing)
-  - [VSCode Setup](#vscode-setup)
-  - [Architecture Overview](#architecture-overview)
-  <!--toc:end-->
-
-<!-- omit in toc -->
-
 ## Setting Up Your Development Environment
 
 This project uses [uv](https://github.com/astral-sh/uv) as the python package manager. Make sure it is installed.
 
 This project uses [Rapptz/discord.py: An API wrapper for Discord written in Python.](https://github.com/Rapptz/discord.py) for interacting with the Discord API.
 
-To set up your development environment, run the following command to install the required dependencies:
+Install the dependencies:
 
 ```bash
 uv sync
-source ./venv/bin/activate
 ```
 
-Copy `.env.example` to `.env`, and fill the BOT_TOKEN with your discord bot token.
+That creates a virtual environment at `.venv`. You do not need to activate it — `uv run <command>` uses it automatically.
+
+Copy `.env.example` to `.env` and fill it in:
+
+| Variable       | Purpose                                                 |
+| -------------- | ------------------------------------------------------- |
+| `BOT_TOKEN`    | Your Discord bot token. Required.                       |
+| `DATABASE_URL` | SQLAlchemy URL, e.g. `sqlite+aiosqlite:///./db/test.db` |
+| `DEBUG`        | `True` turns on debug logging and SQL echo              |
+
+`config/secrets.py` reads these at import and raises if `BOT_TOKEN` is missing.
 
 ### Creating a Discord Bot
 
@@ -39,36 +34,53 @@ TL;DR: Go to discord developer portal, create a new application, add a bot to it
 
 ### Configuring the Bot
 
-Take a look at `config/constants.py`, you can change the command prefix, the guild id for testing, and your discord user id for owner-only commands.
+Take a look at `config/constants.py`. `MY_GUILD` is the test guild the command tree is synced to on startup, and `DEV_ID` is the Discord user id allowed to run the developer-only commands in `cogs/debug.py`. Both ship with the maintainer's ids and need replacing.
 
-You can, of course, add more configurations as needed.
+`command_prefix` sets the prefix for the text commands; everything user-facing is a slash command.
 
 ## Running the Bot Locally
-
-With the development environment set up, you can run the bot locally using the following command:
-
-```bash
-bin/start.bash # If you use bash
-bin/start.zsh # If you use zsh
-```
-
-Alternatively, you can run the bot directly using `uv`:
 
 ```bash
 uv run main.py
 ```
 
+The bot applies any outstanding database migrations, then connects to Discord. Stop it with `Ctrl+C`; it shuts the gateway, the HTTP session and the database engine down in order.
+
+## The Database
+
+SQLite by default, accessed through SQLAlchemy's async engine. The schema is managed by [alembic](https://alembic.sqlalchemy.org/) and migrations run automatically at startup, so a fresh clone needs no manual setup step.
+
+See [Database](./database.md) for the commands, how to change the schema, and what to do with a database created before alembic was adopted.
+
 ## Testing
 
-Currently, there are no automated tests set up for this project. Testing is done manually by running the bot and verifying its functionality.
+The test suite uses `pytest` with `pytest-asyncio` in auto mode, so async tests need no `@pytest.mark.asyncio` marker.
 
-If you would like to contribute tests, please consider using a testing framework like `unittest` or `pytest` and follow the project's coding style.
+```bash
+uv run pytest
+uv run pytest tests/test_migrations.py    # just the schema drift guard
+```
 
-## VSCode Setup
+`tests/conftest.py` provides the fixtures: an in-memory SQLite engine with the schema created, and the session and manager objects wired to it. `tests/test_migrations.py` is the exception — it needs a file-based database, so it builds one under `tmp_path`.
 
-Chances are you are using VSCode as your IDE. After running `uv sync`, you can open the project in VSCode and it should automatically detect the virtual environment located at `./venv`. If not, you can manually select the interpreter by pressing `Ctrl+Shift+P` and searching for `Python: Select Interpreter`, then choosing the one located at `./venv/bin/python`.
+Tests run in CI on every pull request.
 
-> I don't use VSCode myself, so if you are using another IDE and would like to contribute setup instructions for it, please feel free to open a PR!
+## Linting and Formatting
+
+```bash
+uv run ruff format .
+uv run ruff check .
+```
+
+Both run in CI and must be clean before a pull request can merge.
+
+## Editor Setup
+
+After `uv sync`, point your editor's Python interpreter at `.venv/bin/python`.
+
+- **VSCode**: usually detects `.venv` on its own. If not, `Ctrl+Shift+P` → `Python: Select Interpreter`.
+- **Zed**: detects `.venv` automatically; install the Ruff extension for inline lint and format-on-save.
+- **Neovim**: `basedpyright` (or `pyright`) plus `ruff` via your LSP setup.
 
 ## Architecture Overview
 
