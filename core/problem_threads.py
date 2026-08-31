@@ -186,7 +186,8 @@ class ProblemThreadsManager:
         )
         forum_channel = await self.get_forum_channel(guild_id)
         if not forum_channel:
-            raise ForumChannelNotFound(f"Forum channel for guild {guild_id} not found.")
+            logger.info(f"Guild {guild_id} has no forum channel configured.")
+            raise ForumChannelNotFound()
         problem_with_tags = (
             await self.leetcode_problem_manager.get_problem_with_frontend_id(
                 problem_frontend_id
@@ -315,9 +316,9 @@ class ProblemThreadsManager:
         channel = await self.get_forum_channel(guild_id=guild.id)
         logger.debug(f"Forum channel fetched: {channel}")
         if not channel:
-            raise ForumChannelNotFound(
-                "The bot doesn't know which Fourm Channel should the problem be created! Please use /set_thread_channel first to set the Fourm Channel!"
-            )
+            # The default message names /set_forum_channel, which is the command
+            # that actually exists. This used to point at /set_thread_channel.
+            raise ForumChannelNotFound()
         forum_channel = await try_get_channel(
             guild=guild, channel_id=channel.channel_id
         )
@@ -326,7 +327,9 @@ class ProblemThreadsManager:
 
         if not isinstance(forum_channel, ForumChannel):
             raise ForumChannelNotFound(
-                "Something went wrong! The forum channel is not found or not a valid forum channel. Contact the developer for help."
+                "The channel configured for problem threads is gone or is no longer "
+                "a forum channel. Ask a server administrator to run "
+                "/set_forum_channel again."
             )
         problem_stat = "today's problem" if is_daily else f"problem {problem_obj.id}"
         forum_thread = await self.get_thread_by_problem_id(

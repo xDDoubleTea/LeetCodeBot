@@ -71,7 +71,6 @@ class LeetCodeBot(commands.Bot):
         self.engine = create_async_engine(
             DATABASE_URL, echo=debug, hide_parameters=True
         )
-        self.tag_cache: list[str] = []
         self.database_manager: AsyncDatabaseManager
         self.leetcode_api: LeetCodeAPI
         self.leetcode_problem_manger: LeetCodeProblemManager
@@ -107,9 +106,6 @@ class LeetCodeBot(commands.Bot):
         logger.info("Initializing caches...")
         await self.leetcode_problem_manger.init_cache()
         await self.problem_threads_manager.init_cache()
-
-        all_topics_dict = await self.leetcode_problem_manger.get_all_topics_from_db()
-        self.tag_cache = [topic.tag_name for topic in all_topics_dict.values()]
         logger.info("Caches initialized.")
 
     async def on_command_error(

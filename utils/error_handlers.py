@@ -21,6 +21,7 @@ from discord.ext.commands.errors import (
 )
 
 from utils.checks import IsNotDev, UserNotAdministrator
+from utils.custom_exceptions import ForumChannelNotFound
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +33,7 @@ def app_command_message(error: AppCommandError) -> str | None:
     The reply for an error a user can do something about, or None when the error
     is a bug and should be logged instead.
     """
-    if isinstance(error, (UserNotAdministrator, IsNotDev)):
+    if isinstance(error, (UserNotAdministrator, IsNotDev, ForumChannelNotFound)):
         return error.message
 
     if isinstance(error, app_commands.CommandOnCooldown):

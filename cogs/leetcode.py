@@ -253,6 +253,8 @@ class LeetCode(commands.Cog):
                 "This command can only be used in a server!", ephemeral=True
             )
 
+        all_tags = await self.leetcode_problem_manager.get_all_tags_literal()
+
         metadata = AllTagsPageMeta(
             guild_name=guild.name,
             guild_id=guild.id,
@@ -262,11 +264,11 @@ class LeetCode(commands.Cog):
             user_id=interaction.user.id,
             client=interaction.client,
             theme_color=THEME_COLOR,
-            data_len=len(self.bot.tag_cache),
+            data_len=len(all_tags),
         )
         view = AllTagsPaginationView(
             metadata=metadata,
-            data=self.bot.tag_cache,
+            data=all_tags,
             format_page=self.format_tags,
             ephemeral=False,
             items_per_page=15,
