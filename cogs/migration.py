@@ -6,6 +6,7 @@ import re2
 from discord import ForumChannel, app_commands
 from discord.ext import commands
 
+from config.constants import MIGRATE_SCAN_PER, MIGRATE_SCAN_RATE
 from db.problem_threads import ProblemThreads
 from utils.thread_titles import DEFAULT_TITLE_PATTERN, problem_id_from_title
 
@@ -19,6 +20,28 @@ class Migration(commands.Cog):
     def __init__(self, bot: "LeetCodeBot") -> None:
         self.bot = bot
         self.database_manager = bot.database_manager
+        # Keyed by guild, not by user: the forum is the thing being spared, and
+        # the command is administrator-only, so several admins in one server
+        # should not multiply what that server can spend.
+        self._scan_cooldowns: dict[int, app_commands.Cooldown] = {}
+
+    def _scan_bucket(self, guild_id: int, now: float) -> app_commands.Cooldown:
+        # Drop buckets whose window has passed, so a bot in many servers does not
+        # accumulate one entry per server forever. Same approach discord.py takes
+        # in its own cooldown decorator.
+        expired = [
+            key
+            for key, bucket in self._scan_cooldowns.items()
+            if now > bucket._last + bucket.per
+        ]
+        for key in expired:
+            del self._scan_cooldowns[key]
+
+        if guild_id not in self._scan_cooldowns:
+            self._scan_cooldowns[guild_id] = app_commands.Cooldown(
+                MIGRATE_SCAN_RATE, MIGRATE_SCAN_PER
+            )
+        return self._scan_cooldowns[guild_id]
 
     @app_commands.command(
         name="migrate",
@@ -79,7 +102,19 @@ class Migration(commands.Cog):
             )
             return
 
+        # Checked here rather than through app_commands.checks.cooldown, which
+        # consumes a use before the command body runs: a mistyped pattern or an
+        # unconfigured forum channel would then cost the same as a real scan.
+        # Everything above this point is validation and costs nothing.
+        now = interaction.created_at.timestamp()
+        bucket = self._scan_bucket(interaction.guild.id, now)
+        retry_after = bucket.get_retry_after(now)
+        if retry_after:
+            # CommandOnCooldown is what error_handlers already words for the user.
+            raise app_commands.CommandOnCooldown(bucket, retry_after)
+
         threads = await self._collect_threads(channel)
+        bucket.update_rate_limit(now)
         logger.info(
             f"Found {len(threads)} threads in channel {channel.id} to consider."
         )
@@ -98,7 +133,10 @@ class Migration(commands.Cog):
             if instance:
                 problem_threads[thread.id] = instance
 
-        await self.bot.problem_threads_manager.bulk_upsert_thread_to_db(problem_threads)
+        if problem_threads:
+            await self.bot.problem_threads_manager.bulk_upsert_thread_to_db(
+                problem_threads
+            )
 
         # Thread names are never touched; this only records what is already there.
         summary = f"Recorded {len(problem_threads)} of {len(threads)} threads."
