@@ -15,6 +15,7 @@ __pycache__/
 # Testing
 .pytest_cache/
 tests/
+conftest.py
 pytest.ini
 
 # Documentation and Repo Assets

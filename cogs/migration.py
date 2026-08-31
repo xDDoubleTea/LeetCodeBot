@@ -7,28 +7,9 @@ from discord.ext import commands
 
 from db.problem_threads import ProblemThreads
 from main import LeetCodeBot
+from utils.thread_titles import DEFAULT_TITLE_PATTERN, problem_id_from_title
 
 logger = logging.getLogger(__name__)
-
-# "1. Two Sum", which is what this bot names its own threads.
-DEFAULT_TITLE_PATTERN = r"^(\d+)\.\s"
-
-
-def problem_id_from_title(title: str, title_regex) -> int | None:
-    """
-    The problem number in a thread title, or None when the title does not match.
-
-    The first capturing group has to be the number. A pattern that captures
-    something else matches but yields no id, which is a mistake worth reporting
-    to whoever ran the command rather than crashing on.
-    """
-    match = title_regex.match(title)
-    if not match:
-        return None
-    try:
-        return int(match.group(1))
-    except ValueError:
-        return None
 
 
 class Migration(commands.Cog):
@@ -42,9 +23,13 @@ class Migration(commands.Cog):
     )
     @app_commands.describe(
         channel="The forum channel holding the existing threads",
+        # Discord caps a parameter description at 100 characters and discord.py
+        # silently truncates past that, so the default pattern has to fit inside
+        # the budget rather than trail off the end. The anchoring rule is in the
+        # error message the command replies with instead.
         title_pattern=(
-            "Regex for the thread titles, anchored at the start, with the "
-            f"problem number as the first group. Default: {DEFAULT_TITLE_PATTERN}"
+            "Regex matching thread titles; group 1 is the problem number. "
+            f"Default: {DEFAULT_TITLE_PATTERN}"
         ),
     )
     @app_commands.checks.has_permissions(administrator=True)

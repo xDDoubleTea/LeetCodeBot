@@ -7,7 +7,7 @@ recorded is not, and it is the part an admin's own regex reaches.
 
 import re2
 
-from cogs.migration import DEFAULT_TITLE_PATTERN, problem_id_from_title
+from utils.thread_titles import DEFAULT_TITLE_PATTERN, problem_id_from_title
 
 
 def match(title: str, pattern: str = DEFAULT_TITLE_PATTERN) -> int | None:
