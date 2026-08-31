@@ -31,7 +31,7 @@ All types of contributions are encouraged and valued. See the [Table of Contents
 ## Code of Conduct
 
 This project and everyone participating in it is governed by the
-[LeetCodeBot Code of Conduct](https://github.com/xDDoubleTea/LeetCodeBot/blob//CODE_OF_CONDUCT.md).
+[LeetCodeBot Code of Conduct](https://github.com/xDDoubleTea/LeetCodeBot/blob/main/CODE_OF_CONDUCT.md).
 By participating, you are expected to uphold this code. Please report unacceptable behavior
 to <a5457789889409@gmail.com>.
 
@@ -146,7 +146,13 @@ include Setup of env, IDE and typical getting started instructions?
 
 -->
 
-Please refer to the [Development Guide](docs/development-guide.md) for setting up your development environment and running the bot locally.
+Please refer to the [Development Guide](https://xddoubletea.github.io/LeetCodeBot/) for setting up your development environment and running the bot locally.
+
+The rest of the documentation lives there too:
+
+- [Architecture](https://xddoubletea.github.io/LeetCodeBot/architecture/ARCHITECTURE/) — how the pieces fit together.
+- [Main Features](https://xddoubletea.github.io/LeetCodeBot/architecture/main-feature/) — what happens when someone runs `/problem`.
+- [Database](https://xddoubletea.github.io/LeetCodeBot/database/) — the schema, migrations, and how to change them.
 
 ### Improving The Documentation
 
