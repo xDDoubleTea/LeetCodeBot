@@ -8,7 +8,6 @@ outlives asyncio.run() and blocks the interpreter in threading._shutdown().
 
 import asyncio
 import importlib
-import os
 
 import pytest
 from discord import Client
@@ -16,10 +15,9 @@ from discord import Client
 
 @pytest.fixture
 def leetcode_bot():
-    # main imports config.secrets at module scope, which raises if the
-    # environment is missing. setdefault leaves a real .env alone.
-    os.environ.setdefault("BOT_TOKEN", "test-token")
-    os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite://")
+    # Imported here rather than at module scope: main reads config.secrets on
+    # import, so a top-level import would fail collection instead of this test.
+    # The root conftest.py supplies the environment it needs.
     main = importlib.import_module("main")
     return main.LeetCodeBot()
 
