@@ -1,14 +1,17 @@
 import logging
+from typing import TYPE_CHECKING
 
 import discord
 from discord import app_commands
 from discord.ext import commands
 
+if TYPE_CHECKING:
+    from main import LeetCodeBot
 logger = logging.getLogger(__name__)
 
 
 class General(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: "LeetCodeBot"):
         self.bot = bot
         self.database_manager = bot.database_manager
 
@@ -18,5 +21,5 @@ class General(commands.Cog):
         await interaction.response.send_message(f"Pong! Latency: {round(latency)} ms")
 
 
-async def setup(bot: commands.Bot) -> None:
+async def setup(bot: "LeetCodeBot") -> None:
     await bot.add_cog(General(bot))

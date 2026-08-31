@@ -2,8 +2,7 @@ import logging
 
 import discord
 from discord.ext import commands
-from discord.ext.commands import Cog, Context, ExtensionNotFound
-from discord.ext.commands.core import ExtensionFailed
+from discord.ext.commands import Cog, Context, ExtensionFailed, ExtensionNotFound
 from discord.ext.commands.errors import ExtensionAlreadyLoaded, ExtensionNotLoaded
 
 from utils.checks import is_me_command

@@ -1,16 +1,18 @@
 import logging
+from typing import TYPE_CHECKING
 
 from discord import Interaction, app_commands
 from discord.ext import commands
 
-from main import LeetCodeBot
+if TYPE_CHECKING:
+    from main import LeetCodeBot
 from utils.checks import is_me_app_command
 
 logger = logging.getLogger(__name__)
 
 
 class Debug(commands.Cog):
-    def __init__(self, bot: LeetCodeBot) -> None:
+    def __init__(self, bot: "LeetCodeBot") -> None:
         self.bot = bot
         self.database_manager = bot.database_manager
 
@@ -41,5 +43,5 @@ class Debug(commands.Cog):
         logger.debug("Problems Cache:")
 
 
-async def setup(bot: LeetCodeBot) -> None:
+async def setup(bot: "LeetCodeBot") -> None:
     await bot.add_cog(Debug(bot))
