@@ -32,7 +32,15 @@ Problem data is fetched from LeetCode's GraphQL API, stored in a SQLite database
 2. `main()` configures logging, then constructs `LeetCodeBot`, which creates the async engine.
 3. `run_migrations()` applies any outstanding alembic revisions. This happens **before** the bot connects, so a failed migration is a failed startup rather than a bot answering commands against a schema it does not match.
 4. `bot.start()` triggers `setup_hook()`, which builds the `aiohttp` session and the managers, loads the GraphQL queries, loads every module in `cogs/`, and warms the problem, thread and tag caches.
-5. `on_ready()` copies the global commands to `MY_GUILD` and syncs the tree.
+5. `on_ready()` sets the presence. It does **not** sync the command tree — see below.
+
+### Publishing the Command Tree
+
+Syncing is deliberate, never automatic. `on_ready` fires again on every reconnect, and a sync there is both rate-limited and the cause of duplicate commands.
+
+`>sync_app_commands` publishes the tree **globally**, which is what every server sees, including servers the bot has not joined yet. That is the only sync a deployment needs, and only when the set of commands changes.
+
+`>sync_app_commands guild` copies the tree into the current server instead, which appears immediately and is the fast path while developing. Discord lists guild-scoped and global commands **side by side** rather than letting one shadow the other, so running both leaves two of everything in the picker. `>clear_guild_commands` removes the copies, and `>app_commands_audit` reports which servers still hold any.
 
 ### Shutdown Sequence
 
