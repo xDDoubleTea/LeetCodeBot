@@ -1,16 +1,18 @@
 import logging
+from typing import TYPE_CHECKING
 
 import discord
 from discord import app_commands
 from discord.ext import commands
 
-from main import LeetCodeBot
+if TYPE_CHECKING:
+    from main import LeetCodeBot
 
 logger = logging.getLogger(__name__)
 
 
 class HelpCog(commands.Cog):
-    def __init__(self, bot: LeetCodeBot):
+    def __init__(self, bot: "LeetCodeBot") -> None:
         self.bot = bot
         self.database_manager = bot.database_manager
 
@@ -55,5 +57,5 @@ class HelpCog(commands.Cog):
         await interaction.response.send_message(embed=help_embed)
 
 
-async def setup(bot: LeetCodeBot) -> None:
+async def setup(bot: "LeetCodeBot") -> None:
     await bot.add_cog(HelpCog(bot))

@@ -1,5 +1,5 @@
 import logging
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 from discord import (
     DMChannel,
@@ -14,9 +14,7 @@ from discord.channel import ForumChannel, ThreadWithMessage
 from discord.ext import commands, tasks
 
 from config.constants import LEETCODE_API_REFRESH_TIME, THEME_COLOR
-from config.secrets import debug
 from db.problem import Problem
-from main import LeetCodeBot
 from models.leetcode import (
     ProblemDifficulity,
     ProblemWithTags,
@@ -43,11 +41,14 @@ from view.pagination_view import (
     UserSubmissionPaginationView,
 )
 
+if TYPE_CHECKING:
+    from main import LeetCodeBot
+
 logger = logging.getLogger(__name__)
 
 
 class LeetCode(commands.Cog):
-    def __init__(self, bot: LeetCodeBot) -> None:
+    def __init__(self, bot: "LeetCodeBot") -> None:
         self.bot = bot
         self.database_manager = bot.database_manager
         self.leetcode_problem_manager = bot.leetcode_problem_manger
@@ -61,6 +62,11 @@ class LeetCode(commands.Cog):
         logger.info("LeetCode problems cache refreshed.")
 
     async def cog_load(self) -> None:
+        # Imported here rather than at module scope: config.secrets resolves
+        # BOT_TOKEN on import and raises without one, which would put this cog
+        # back to needing a configured environment just to be imported.
+        from config.secrets import debug
+
         if debug:
             return
         logger.info("Starting daily LeetCode cache refresh task...")
