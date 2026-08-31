@@ -4,8 +4,10 @@
 
 - [Main Feature](#main-feature)
   - [LeetCode Commands](#leetcode-commands)
+    - [The Shared Workflow](#the-shared-workflow)
     - [LeetCode Problem Thread Creation](#leetcode-problem-thread-creation)
     - [Daily Challenge Thread Creation](#daily-challenge-thread-creation)
+    - [Where Problem Data Comes From](#where-problem-data-comes-from)
   - [UML charts](#uml-charts)
   <!--toc:end-->
 
@@ -13,122 +15,107 @@
 
 For available commands, please refer to [README](https://github.com/xDDoubleTea/LeetCodeBot/blob/main/README.md).
 
+### The Shared Workflow
+
+The three commands that open a thread directly — `/problem`, `/daily` and `/random` — are wrapped in the `handle_leetcode_interaction` decorator from `utils/handle_leetcode_interation.py`. The decorated method's only job is to return a `ProblemWithTags`; the decorator does the rest:
+
+1. Defers the interaction, since fetching can outrun Discord's three-second window.
+2. Calls the command body to resolve the problem.
+3. Replies and stops if nothing came back.
+4. Hands the problem to `ProblemThreadsManager.reopen_or_create_problem_thread`.
+5. Replies with a link, saying whether the thread was created or already existed.
+6. Turns `ForumChannelNotFound`, `FetchError` and `ProblemNotFound` into readable messages.
+
+This is why the individual commands are only a few lines each. `/problem-title` and `/filter-by-tag` do not use it: they return several candidates, so they answer with a paginated selection view from `view/pagination_view.py` instead.
+
 ### LeetCode Problem Thread Creation
 
-**`/problem <problem_id>`** Creates a thread for the specified LeetCode problem ID.
+**`/problem <id>`** opens a discussion thread for a problem by its LeetCode number.
 
-This command generates a dedicated discussion thread for the given problem, allowing users to collaborate and share solutions.
+Logic flow:
 
-Logic Flow:
+1. User invokes `/problem <id>`.
+2. `LeetCodeProblemManager.get_problem_with_frontend_id` resolves it: the in-memory cache first, then the database. If it is in neither, it raises `ProblemNotFound` — the command does **not** reach out to LeetCode. See [Where Problem Data Comes From](#where-problem-data-comes-from).
+3. `reopen_or_create_problem_thread` looks up the guild's configured forum channel, raising `ForumChannelNotFound` if `/set_forum_channel` was never run.
+4. It checks the database for an existing thread for that problem in that guild.
+5. If one exists and is still present in Discord, it is reused. If the record exists but the thread is gone, the record is deleted and a new thread is created.
+6. `_create_thread` builds the thread: title `"<id>. <title>"`, the problem URL, the description embed, and the forum tags `LeetCode` plus the difficulty — creating those tags in the channel if they are missing.
+7. The new thread is recorded in the database and the user gets a link.
 
-1. User invokes `/problem <problem_id>`.
-2. The bot first checks if a thread for the problem already exists.
-3. If not, it will get the problem first from cache, and then from database, and finally from LeetCode API if not found.
-4. Once the problem data is retrieved, the bot creates a new thread in the designated channel configured for the server.
-5. The bot populates the thread with the problem details, including title, difficulty, and a link to the problem on LeetCode.
-6. The bot sends a confirmation message to the user with a link to the newly created thread.
+Involved files:
 
-Involved files/modules and functions:
-
-- `cogs/leetcode.py`: Contains the command definition and logic for handling the `/problem` command.
-  - `leetcode_problem` function: Handles the command invocation and orchestrates the thread creation process.
-  - `_create_thread` function: Responsible for creating the thread and populating it with problem details.
-  - `get_problem_desc_embed` function: Generates the embed message containing problem information.
-- `core/leetcode_api.py`: Responsible for interacting with the [LeetCode API](https://github.com/noworneverev/leetcode-api/tree/main).
-  - `fetch_problem_by_id` function: Fetches problem details using the provided problem ID.
-  - `parse_single_problem_response` function: Parses the API response to extract relevant problem information.
-- `db/problem.py`: Defines the `Problem` model used for database interactions.
-- `db/problem_threads.py`: Defines the `ProblemThreads` model used to track created threads.
-- `core/leetcode_problem.py`: Contains logic for managing LeetCode problems.
-  - `get_problem` function: Retrieves problem details from cache, database, or API.
-- `core/problem_threads.py`: Manages the creation and tracking of problem discussion threads.
-  - `get_forum_channel` function: Determines the appropriate forum channel for thread creation.
-  - `get_thread_by_problem_id` function: Checks if a thread for the problem already exists.
-  - `delete_thread` function: Deletes a thread record from the database if the problem is found but the thread is missing in Discord.
-- `utils/discord_utils`: Provides utility functions for Discord interactions.
-  - `try_get_channel` function: Safely retrieves a Discord channel by ID.
-
-Flow Diagram:
+- `cogs/leetcode.py` — `leetcode_problem`, the command definition.
+- `utils/handle_leetcode_interation.py` — `handle_leetcode_interaction`, the shared workflow above.
+- `core/leetcode_problem.py` — `get_problem_with_frontend_id`, `get_problem_from_db`.
+- `core/problem_threads.py` — `reopen_or_create_problem_thread`, `get_forum_channel`, `get_thread_by_problem_id`, `_create_thread`, `create_thread_in_db`, `delete_thread_from_db`.
+- `utils/embed_presenters.py` — `get_problem_desc_embed`.
+- `utils/discord_utils.py` — `try_get_channel`.
+- `db/problem.py`, `db/problem_threads.py`, `db/thread_channel.py` — the models.
 
 ```mermaid
 flowchart TD
-Start([User invokes /problem ID]) --> CheckThread{Thread exists?}
+    Start([User invokes /problem ID]) --> Defer[Decorator defers interaction]
+    Defer --> CheckCache{In problem cache?}
 
-    %% Path if thread already exists
-    CheckThread -- Yes --> ReplyLink[Reply with link to existing thread]
+    CheckCache -- Yes --> Resolved[ProblemWithTags]
+    CheckCache -- No --> CheckDB{In database?}
+    CheckDB -- Yes --> Resolved
+    CheckDB -- No --> NotFound[ProblemNotFound -> error message]
 
-    %% Path if thread does not exist
-    CheckThread -- No --> CheckCache{Check Cache}
+    Resolved --> Forum{Forum channel set?}
+    Forum -- No --> NoForum[ForumChannelNotFound -> error message]
+    Forum -- Yes --> Existing{Thread record exists?}
 
-    %% Data Retrieval Strategy
-    CheckCache -- Found --> GetData[Retrieve Problem Data]
-    CheckCache -- Not Found --> CheckDB{Check Database}
+    Existing -- No --> Create[Create thread, record it]
+    Existing -- Yes --> Alive{Thread still in Discord?}
+    Alive -- Yes --> Reuse[Reuse existing thread]
+    Alive -- No --> Purge[Delete stale record] --> Create
 
-    CheckDB -- Found --> GetData
-    CheckDB -- Not Found --> FetchAPI[Fetch from LeetCode API]
-    FetchAPI --> GetData
-
-    %% Creation Process
-    GetData --> CreateThread[Create Thread in Forum Channel]
-    CreateThread --> Populate[Populate: Title, Difficulty, Link]
-    Populate --> Confirm[Send Confirmation Link to User]
-
-    ReplyLink --> End([End])
-    Confirm --> End
+    Create --> Confirm[Reply with link]
+    Reuse --> Confirm
+    Confirm --> End([End])
+    NotFound --> End
+    NoForum --> End
 ```
 
 ### Daily Challenge Thread Creation
 
-This command is similar to the `/problem` command but specifically targets the daily challenge problem.
+**`/daily`** does the same thing for today's LeetCode challenge. Only step 2 differs: the daily problem is not addressable by id, so it comes from the API.
 
-Since we have to fetch the daily challenge problem from LeetCode API directly, the logic flow is slightly different:
+1. `LeetCodeProblemManager.get_daily_problem` returns the cached daily problem if one is held.
+2. Otherwise `fetch_daily_problem` calls `LeetCodeAPI.fetch_daily`, parsed by `_parse_daily_problem_response`.
+3. The result is reconciled against the problem cache and the database, so the daily thread refers to the same `Problem` row as `/problem <id>` would.
+4. From there the shared workflow takes over, identically.
 
-1. User invokes `/daily`.
-2. The bot fetches the daily challenge problem _directly_ from LeetCode API.
-3. The bot checks if a thread for the daily challenge already exists.
-4. If not, it creates a new thread in the designated channel configured for the server.
-5. The bot populates the thread with the daily challenge problem details.
-6. The bot sends a confirmation message to the user with a link to the newly created thread.
+Involved files, in addition to those above:
 
-Involved files/modules and functions:
-
-- `cogs/leetcode.py`: Contains the command definition and logic for handling the `/daily` command.
-  - `leetcode_problem` function: Handles the command invocation and orchestrates the thread creation process.
-  - `_create_thread` function: Responsible for creating the thread and populating it with problem details.
-  - `get_problem_desc_embed` function: Generates the embed message containing problem information.
-- `core/leetcode_api.py`: Responsible for interacting with the [LeetCode API](https://github.com/noworneverev/leetcode-api/tree/main).
-  - `get_daily_problem` function: Fetches the daily challenge problem details from the LeetCode API.
-  - `parse_daily_problem_response` function: Parses the API response to extract relevant problem information.
-- `db/problem.py`: Defines the `Problem` model used for database interactions.
-- `db/problem_threads.py`: Defines the `ProblemThreads` model used to track created threads.
-- `core/leetcode_problem.py`: Contains logic for managing LeetCode problems.
-  - `get_problem` function: Retrieves problem details from cache, database, or API.
-- `core/problem_threads.py`: Manages the creation and tracking of problem discussion threads.
-  - `get_forum_channel` function: Determines the appropriate forum channel for thread creation.
-  - `get_thread_by_problem_id` function: Checks if a thread for the problem already exists.
-  - `delete_thread` function: Deletes a thread record from the database if the problem is found but the thread is missing in Discord.
-- `utils/discord_utils`: Provides utility functions for Discord interactions.
-  - `try_get_channel` function: Safely retrieves a Discord channel by ID.
-
-Flow Diagram:
+- `core/leetcode_api.py` — `fetch_daily`, `_parse_daily_problem_response`, `_validate_response`.
+- `core/leetcode_problem.py` — `get_daily_problem`, `fetch_daily_problem`.
+- `graphql/fetch_daily.graphql` — the query itself.
 
 ```mermaid
 flowchart TD
-Start([User invokes /daily]) --> FetchAPI[Fetch Daily Challenge from API]
+    Start([User invokes /daily]) --> Defer[Decorator defers interaction]
+    Defer --> Cached{Daily problem cached?}
 
-    FetchAPI --> CheckThread{Thread exists?}
+    Cached -- Yes --> Resolved[ProblemWithTags]
+    Cached -- No --> FetchAPI[fetch_daily from LeetCode API]
+    FetchAPI --> Reconcile[Reconcile with cache and database]
+    Reconcile --> Resolved
 
-    %% Path if thread already exists
-    CheckThread -- Yes --> ReplyLink[Reply with link to existing thread]
-
-    %% Path if thread does not exist
-    CheckThread -- No --> CreateThread[Create Thread in Forum Channel]
-    CreateThread --> Populate[Populate: Daily Challenge Details]
-    Populate --> Confirm[Send Confirmation Link to User]
-
-    ReplyLink --> End([End])
-    Confirm --> End
+    Resolved --> Shared[Shared thread workflow]
+    Shared --> Confirm[Reply with link]
+    Confirm --> End([End])
 ```
+
+### Where Problem Data Comes From
+
+The commands read from the cache and the database only. Nothing populates them on demand — that is `refresh_cache`'s job:
+
+- A `tasks.loop` in `cogs/leetcode.py` runs it daily at `LEETCODE_API_REFRESH_TIME` (`config/constants.py`).
+- `/refresh` runs it on request, admin only.
+
+`refresh_cache` calls `LeetCodeAPI.fetch_all_problems`, upserts the results into the database, and rebuilds the in-memory cache. So a problem added to LeetCode since the last refresh will report as not found until the next one.
 
 ## UML charts
 
