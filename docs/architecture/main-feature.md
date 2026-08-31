@@ -1,16 +1,5 @@
 # Main Feature
 
-<!--toc:start-->
-
-- [Main Feature](#main-feature)
-  - [LeetCode Commands](#leetcode-commands)
-    - [The Shared Workflow](#the-shared-workflow)
-    - [LeetCode Problem Thread Creation](#leetcode-problem-thread-creation)
-    - [Daily Challenge Thread Creation](#daily-challenge-thread-creation)
-    - [Where Problem Data Comes From](#where-problem-data-comes-from)
-  - [UML charts](#uml-charts)
-  <!--toc:end-->
-
 ## LeetCode Commands
 
 For available commands, please refer to [README](https://github.com/xDDoubleTea/LeetCodeBot/blob/main/README.md).

@@ -1,21 +1,5 @@
 # Development Guide
 
-<!--toc:start-->
-
-- [Development Guide](#development-guide)
-  - [Setting Up Your Development Environment](#setting-up-your-development-environment)
-    - [Creating a Discord Bot](#creating-a-discord-bot)
-    - [Configuring the Bot](#configuring-the-bot)
-  - [Running the Bot Locally](#running-the-bot-locally)
-  - [The Database](#the-database)
-  - [Testing](#testing)
-  - [Linting and Formatting](#linting-and-formatting)
-  - [Editor Setup](#editor-setup)
-  - [Architecture Overview](#architecture-overview)
-  <!--toc:end-->
-
-<!-- omit in toc -->
-
 ## Setting Up Your Development Environment
 
 This project uses [uv](https://github.com/astral-sh/uv) as the python package manager. Make sure it is installed.
@@ -32,11 +16,11 @@ That creates a virtual environment at `.venv`. You do not need to activate it â€
 
 Copy `.env.example` to `.env` and fill it in:
 
-| Variable | Purpose |
-| --- | --- |
-| `BOT_TOKEN` | Your Discord bot token. Required. |
+| Variable       | Purpose                                                 |
+| -------------- | ------------------------------------------------------- |
+| `BOT_TOKEN`    | Your Discord bot token. Required.                       |
 | `DATABASE_URL` | SQLAlchemy URL, e.g. `sqlite+aiosqlite:///./db/test.db` |
-| `DEBUG` | `True` turns on debug logging and SQL echo |
+| `DEBUG`        | `True` turns on debug logging and SQL echo              |
 
 `config/secrets.py` reads these at import and raises if `BOT_TOKEN` is missing.
 

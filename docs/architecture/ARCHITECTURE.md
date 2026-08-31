@@ -1,18 +1,5 @@
 # Developer Documentation & Architecture
 
-<!--toc:start-->
-
-- [Developer Documentation & Architecture](#developer-documentation-architecture)
-  - [1. System Overview](#1-system-overview)
-  - [2. Directory Structure](#2-directory-structure)
-  - [3. Main Logic Flow](#3-main-logic-flow)
-    - [Startup Sequence](#startup-sequence)
-    - [Shutdown Sequence](#shutdown-sequence)
-    - [Error Handling](#error-handling)
-    - [LeetCode Commands](#leetcode-commands)
-  - [4. Development Setup](#4-development-setup)
-  <!--toc:end-->
-
 ## 1. System Overview
 
 **LeetCodeBot** is a Python Discord bot that makes discussing LeetCode problems easier by giving each problem its own forum thread. It is built on `discord.py` and organises its features into extensions ("cogs").
@@ -21,19 +8,19 @@ Problem data is fetched from LeetCode's GraphQL API, stored in a SQLite database
 
 ## 2. Directory Structure
 
-| Path | Contents |
-| --- | --- |
-| `main.py` | Entry point. The `LeetCodeBot` subclass, migrations, signal handling, shutdown. |
-| `cogs/` | Slash and text commands, one module per area: `leetcode`, `admin`, `general`, `help`, `debug`, `migration`, `problem_list`. |
-| `core/` | The managers holding the business logic and the caches: `leetcode_api`, `leetcode_problem`, `problem_threads`. |
-| `db/` | SQLAlchemy models and the session manager. |
-| `alembic/` | Schema migrations. One file per change under `alembic/versions/`. |
-| `models/` | Plain dataclasses and enums, e.g. `ProblemDifficulty`. Not ORM models. |
-| `view/` | `discord.ui` components. Currently the generic pagination view. |
-| `utils/` | Helpers shared across cogs: checks, error handlers, embed builders, transformers. |
-| `graphql/` | The `.graphql` query files sent to LeetCode, loaded at startup. |
-| `config/` | `constants.py` (tunables and ids), `secrets.py` (reads `.env`), `logger.py`. |
-| `tests/` | The pytest suite. |
+| Path       | Contents                                                                                                                    |
+| ---------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `main.py`  | Entry point. The `LeetCodeBot` subclass, migrations, signal handling, shutdown.                                             |
+| `cogs/`    | Slash and text commands, one module per area: `leetcode`, `admin`, `general`, `help`, `debug`, `migration`, `problem_list`. |
+| `core/`    | The managers holding the business logic and the caches: `leetcode_api`, `leetcode_problem`, `problem_threads`.              |
+| `db/`      | SQLAlchemy models and the session manager.                                                                                  |
+| `alembic/` | Schema migrations. One file per change under `alembic/versions/`.                                                           |
+| `models/`  | Plain dataclasses and enums, e.g. `ProblemDifficulty`. Not ORM models.                                                      |
+| `view/`    | `discord.ui` components. Currently the generic pagination view.                                                             |
+| `utils/`   | Helpers shared across cogs: checks, error handlers, embed builders, transformers.                                           |
+| `graphql/` | The `.graphql` query files sent to LeetCode, loaded at startup.                                                             |
+| `config/`  | `constants.py` (tunables and ids), `secrets.py` (reads `.env`), `logger.py`.                                                |
+| `tests/`   | The pytest suite.                                                                                                           |
 
 `core/` holds no Discord-facing code and `cogs/` holds no business logic; a cog fetches through a manager and renders the result.
 
