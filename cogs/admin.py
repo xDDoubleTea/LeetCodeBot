@@ -1,7 +1,5 @@
 import logging
 
-import discord
-from discord import TextChannel
 from discord.ext import commands
 from discord.ext.commands import Cog, Context, ExtensionNotFound
 from discord.ext.commands.core import ExtensionFailed
@@ -70,22 +68,29 @@ class admin(Cog):
 
     @commands.command(name="sync_app_commands", hidden=True)
     @is_me_command()
-    async def sync_app_commands(self, ctx: Context):
-        assert ctx.guild is not None
-        self.bot.tree.copy_global_to(guild=discord.Object(id=ctx.guild.id))
-        synced = await self.bot.tree.sync(guild=ctx.guild)
-        await ctx.send(f"Synced {len(synced)} app commands globally.")
+    async def sync_app_commands(self, ctx: Context, scope: str = "global"):
+        """
+        Publish the command tree.
 
-    @commands.command(name="purge_msg", hidden=True, aliases=["purge"])
-    @commands.has_permissions(administrator=True)
-    async def purge_msg(self, ctx: Context, limit: int):
-        try:
-            assert isinstance(ctx.channel, TextChannel)
-            await ctx.channel.purge(limit=limit)
-        except AssertionError:
+        `global` is what every guild sees, including guilds the bot has not
+        joined yet, so a new server needs no action. `guild` copies the tree to
+        the current server only, which is the fast path while developing --
+        those copies shadow the global ones, so a stale guild copy hides a
+        working global command until it is cleared.
+        """
+        if scope == "guild":
+            assert ctx.guild is not None
+            self.bot.tree.copy_global_to(guild=ctx.guild)
+            synced = await self.bot.tree.sync(guild=ctx.guild)
+            await ctx.send(f"Synced {len(synced)} app commands to this guild.")
             return
-        else:
+
+        if scope != "global":
+            await ctx.send("Scope must be `global` or `guild`.")
             return
+
+        synced = await self.bot.tree.sync()
+        await ctx.send(f"Synced {len(synced)} app commands globally.")
 
 
 async def setup(client):
