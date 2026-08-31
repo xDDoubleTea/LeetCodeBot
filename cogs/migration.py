@@ -6,6 +6,7 @@ import re2
 from discord import ForumChannel, app_commands
 from discord.ext import commands
 
+from config.constants import MIGRATE_SCAN_PER, MIGRATE_SCAN_RATE
 from db.problem_threads import ProblemThreads
 from utils.thread_titles import DEFAULT_TITLE_PATTERN, problem_id_from_title
 
@@ -13,13 +14,6 @@ if TYPE_CHECKING:
     from main import LeetCodeBot
 
 logger = logging.getLogger(__name__)
-
-# One forum scan per guild per five minutes. archived_threads(limit=None) walks
-# every archived post in the channel, so the cost grows with the forum rather
-# than being fixed, and the result barely changes between two runs a minute
-# apart.
-SCAN_RATE = 1
-SCAN_PER = 300.0
 
 
 class Migration(commands.Cog):
@@ -44,7 +38,9 @@ class Migration(commands.Cog):
             del self._scan_cooldowns[key]
 
         if guild_id not in self._scan_cooldowns:
-            self._scan_cooldowns[guild_id] = app_commands.Cooldown(SCAN_RATE, SCAN_PER)
+            self._scan_cooldowns[guild_id] = app_commands.Cooldown(
+                MIGRATE_SCAN_RATE, MIGRATE_SCAN_PER
+            )
         return self._scan_cooldowns[guild_id]
 
     @app_commands.command(

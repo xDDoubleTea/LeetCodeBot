@@ -11,6 +11,12 @@ MY_GUILD = discord.Object(1039906085626196079)  # Replace with your guild ID
 # For embed description
 PREVIEW_LEN = 4000
 
+# /migrate: one forum scan per guild per five minutes. archived_threads(limit=None)
+# walks every archived post in the channel, so the cost grows with the forum rather
+# than being fixed, and the result barely changes between two runs a minute apart.
+MIGRATE_SCAN_RATE = 1
+MIGRATE_SCAN_PER = 300.0
+
 DEV_ID = 398444155132575756  # Replace with your Discord user ID
 
 THEME_COLOR = discord.Color.green()

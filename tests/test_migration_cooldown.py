@@ -9,7 +9,8 @@ command body runs -- a mistyped pattern would cost as much as a real scan.
 
 from types import SimpleNamespace
 
-from cogs.migration import SCAN_PER, Migration
+from cogs.migration import Migration
+from config.constants import MIGRATE_SCAN_PER
 
 
 def make_cog() -> Migration:
@@ -37,7 +38,7 @@ def test_the_window_expires():
     cog = make_cog()
     cog._scan_bucket(guild_id=1, now=1000.0).update_rate_limit(1000.0)
 
-    later = 1000.0 + SCAN_PER + 1
+    later = 1000.0 + MIGRATE_SCAN_PER + 1
     assert cog._scan_bucket(guild_id=1, now=later).get_retry_after(later) == 0
 
 
@@ -58,5 +59,5 @@ def test_expired_buckets_are_dropped():
     cog._scan_bucket(guild_id=1, now=1000.0).update_rate_limit(1000.0)
     assert 1 in cog._scan_cooldowns
 
-    cog._scan_bucket(guild_id=2, now=1000.0 + SCAN_PER + 1)
+    cog._scan_bucket(guild_id=2, now=1000.0 + MIGRATE_SCAN_PER + 1)
     assert 1 not in cog._scan_cooldowns
