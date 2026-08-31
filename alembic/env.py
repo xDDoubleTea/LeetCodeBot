@@ -35,7 +35,15 @@ _database_url = os.getenv("DATABASE_URL")
 if _database_url and not config.get_main_option("sqlalchemy.url", None):
     config.set_main_option("sqlalchemy.url", _database_url)
 
-if config.config_file_name is not None:
+# main.py hands its own connection over when it upgrades at startup. That is also
+# the signal that the process already owns its logging, so alembic.ini's [loggers]
+# section must not be applied: fileConfig defaults to disable_existing_loggers=True,
+# which switches off every logger configured before it -- the bot's own included --
+# and drops root back to WARNING with alembic's stderr handler. The bot would go
+# silent from the migration onwards. Only the CLI, which configures nothing itself,
+# should get alembic.ini's logging.
+_embedded = config.attributes.get("connection") is not None
+if config.config_file_name is not None and not _embedded:
     fileConfig(config.config_file_name)
 
 target_metadata = Base.metadata
