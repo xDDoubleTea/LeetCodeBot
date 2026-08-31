@@ -199,10 +199,13 @@ async def test_refresh_cache_success(manager, mock_db_session):
 
     manager.leetcode_api.fetch_all_problems.return_value = api_data
 
+    # _create_problem_tag_associations reads problems then tags, then init_cache
+    # reads the problems and finally the topic tags it builds the tag cache from.
     mock_db_session.scalars.return_value.all.side_effect = [
         [p1, p2],
         [t1, t2],
         [p1, p2],
+        [t1, t2],
     ]
 
     api_problem_obj = Problem(
@@ -225,11 +228,18 @@ async def test_refresh_cache_success(manager, mock_db_session):
     assert 2 in manager.all_problem_cache
     assert manager.all_problem_cache[1] == p1
 
+    # The tag cache is rebuilt by the refresh. It used to be filled once in
+    # setup_hook and never again, so a tag added to LeetCode stayed invisible to
+    # /check-available-tags, the autocomplete and TagTransformer until a restart.
+    assert manager.tag_cache_literal == ["T1", "T2"]
+
     execute_calls = mock_db_session.execute.call_args_list
     assert len(execute_calls) == 4
 
     scalars_calls = mock_db_session.scalars.call_args_list
-    assert len(scalars_calls) == 4
+    # Five, not four: init_cache now reads the topic tags as well, to rebuild the
+    # tag cache.
+    assert len(scalars_calls) == 5
 
     # 1. Problem bulk upsert
     problem_upsert_data = execute_calls[0].args[1]

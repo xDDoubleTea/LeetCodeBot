@@ -14,6 +14,7 @@ from core.leetcode_api import LeetCodeAPI
 from db.async_db_manager import AsyncDatabaseManager
 from db.problem import Problem, TopicTags, problem_tags_association
 from models.leetcode import ProblemDifficulity, ProblemWithTags
+from utils.custom_exceptions import CacheInitError
 from utils.embed_presenters import get_problem_desc_embed
 
 logger = logging.getLogger(__name__)
@@ -31,6 +32,7 @@ class LeetCodeProblemManager:
     ) -> None:
         self.all_problem_cache: dict[int, Problem] = dict()
         self.free_problem_cache: dict[int, Problem] = dict()
+        self.tag_cache_literal: list[str] = []
         self.daily_problem: ProblemWithTags | None = None
         self.leetcode_api: LeetCodeAPI = leetcode_api
         self.async_database_manager: AsyncDatabaseManager = async_database_manager
@@ -123,8 +125,9 @@ class LeetCodeProblemManager:
         """
         try:
             problems = await self.get_problems_from_db()
-
             self.daily_problem = await self.fetch_daily_problem()
+            all_topics_dict = await self.get_all_topics_from_db()
+
             logger.info("Initializing problem cache with %d problems.", len(problems))
 
             all_problem_cache_tmp = {
@@ -139,9 +142,11 @@ class LeetCodeProblemManager:
 
             self.all_problem_cache = all_problem_cache_tmp
             self.free_problem_cache = free_problem_cache_tmp
+            self.tag_cache_literal = [
+                topic.tag_name for topic in all_topics_dict.values()
+            ]
         except Exception as e:
-            logger.error("Error initializing cache", exc_info=e)
-            raise Exception(f"Failed to initialize cache: {e}") from e
+            raise CacheInitError(f"Failed to initialize cache: {e}") from e
 
     async def refresh_cache(self):
         """
@@ -174,8 +179,7 @@ class LeetCodeProblemManager:
 
             logger.info("Problem cache refresh completed.")
         except Exception as e:
-            logger.error("Error refreshing cache", exc_info=e)
-            raise Exception(e) from e
+            raise CacheInitError(f"Failed to refresh cache: {e}") from e
 
     async def get_problems_from_db(self) -> Sequence[Problem]:
         async with self.async_database_manager as db:
@@ -183,6 +187,9 @@ class LeetCodeProblemManager:
             stmt = select(Problem).options(selectinload(Problem.tags))
             results = await db.scalars(stmt)
             return results.all()
+
+    async def get_all_tags_literal(self) -> list[str]:
+        return self.tag_cache_literal
 
     async def get_all_topics_from_db(self) -> dict[int, TopicTags]:
         async with self.async_database_manager as db:
@@ -287,7 +294,7 @@ class LeetCodeProblemManager:
 
     async def get_problem_with_title_regex(
         self, problem_title_regex: str
-    ) -> Sequence[Problem] | None:
+    ) -> Sequence[Problem]:
         try:
             logger.debug("Try compiling regex")
             re2.compile(problem_title_regex)
@@ -298,11 +305,11 @@ class LeetCodeProblemManager:
         except re2.error as e:
             raise ValueError("Invalid regular expression provided.") from e
 
-        except Exception as e:
+        except Exception:
             logger.error(
-                f"Error retrieving problem with title regex {problem_title_regex}",
-                exc_info=e,
+                f"Error retrieving problem with title regex {problem_title_regex}"
             )
+            raise
 
     async def get_problem_with_frontend_id(
         self, problem_frontend_id: int
@@ -332,14 +339,9 @@ class LeetCodeProblemManager:
                 f"Problem with ID {problem_frontend_id} not found in cache nor DB"
             )
 
-        except ProblemNotFound as e:
-            raise e
-        except Exception as e:
-            logger.error(
-                f"Error retrieving problem with ID {problem_frontend_id}",
-                exc_info=e,
-            )
-            raise Exception(e) from e
+        except Exception:
+            logger.error(f"Error retrieving problem with ID {problem_frontend_id}")
+            raise
 
     async def get_daily_problem(self) -> ProblemWithTags:
         if self.daily_problem is not None:
@@ -352,45 +354,38 @@ class LeetCodeProblemManager:
         """
         Retrieves the daily problem from LeetCode.
         """
-        try:
-            logger.info("Fetching daily problem from LeetCode API.")
-            problem_data = await self.leetcode_api.fetch_daily()
-            if not problem_data:
-                raise ProblemNotFound("Daily problem not found.")
-            logger.debug(f"Daily Problem Data: {problem_data}")
-            problem = problem_data.problem
-            tags = problem_data.tags
+        logger.info("Fetching daily problem from LeetCode API.")
+        problem_data = await self.leetcode_api.fetch_daily()
+        if not problem_data:
+            raise ProblemNotFound("Daily problem not found.")
+        logger.debug(f"Daily Problem Data: {problem_data}")
+        problem = problem_data.problem
+        tags = problem_data.tags
 
-            logger.debug(f"Daily Problem: {problem}")
-            if problem.problem_frontend_id in self.all_problem_cache:
-                return ProblemWithTags(
-                    self.all_problem_cache[problem.problem_frontend_id],
-                    set(self.all_problem_cache[problem.problem_frontend_id].tags),
-                )
-            logger.info(
-                f"Daily problem with ID {problem.problem_frontend_id} not found in cache. Checking DB."
+        logger.debug(f"Daily Problem: {problem}")
+        if problem.problem_frontend_id in self.all_problem_cache:
+            return ProblemWithTags(
+                self.all_problem_cache[problem.problem_frontend_id],
+                set(self.all_problem_cache[problem.problem_frontend_id].tags),
             )
-            if db_problem := await self.get_problem_from_db(
-                problem.problem_frontend_id
-            ):
-                self.all_problem_cache[problem.problem_frontend_id] = db_problem
-                return ProblemWithTags(db_problem, set(db_problem.tags))
+        logger.info(
+            f"Daily problem with ID {problem.problem_frontend_id} not found in cache. Checking DB."
+        )
+        if db_problem := await self.get_problem_from_db(problem.problem_frontend_id):
+            self.all_problem_cache[problem.problem_frontend_id] = db_problem
+            return ProblemWithTags(db_problem, set(db_problem.tags))
 
-            logger.info(
-                f"Daily problem with ID {problem.problem_frontend_id} not found in DB. Adding to DB."
-            )
-            new_problem = await self.add_problem_to_db(problem, tags)
+        logger.info(
+            f"Daily problem with ID {problem.problem_frontend_id} not found in DB. Adding to DB."
+        )
+        new_problem = await self.add_problem_to_db(problem, tags)
 
-            logger.debug(f"New Daily Problem Added: {new_problem}")
-            self.all_problem_cache[problem.problem_frontend_id] = new_problem
-            logger.debug(
-                f"Daily Problem Tags: {[tag.tag_name for tag in new_problem.tags]}"
-            )
-            return ProblemWithTags(new_problem, set(new_problem.tags))
-
-        except Exception as e:
-            logger.error("Error retrieving daily problem", exc_info=e)
-            raise Exception(e) from e
+        logger.debug(f"New Daily Problem Added: {new_problem}")
+        self.all_problem_cache[problem.problem_frontend_id] = new_problem
+        logger.debug(
+            f"Daily Problem Tags: {[tag.tag_name for tag in new_problem.tags]}"
+        )
+        return ProblemWithTags(new_problem, set(new_problem.tags))
 
     async def add_problem_to_db(
         self, problem: Problem, tags: set[TopicTags]

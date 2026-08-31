@@ -17,6 +17,7 @@ from discord.ext.commands.errors import (
 )
 
 from utils.checks import IsNotDev, UserNotAdministrator
+from utils.custom_exceptions import ForumChannelNotFound
 from utils.error_handlers import (
     UNEXPECTED_MESSAGE,
     ErrorHandlingTree,
@@ -42,6 +43,17 @@ class FakeContext:
 def test_check_failures_are_shown_to_the_user():
     assert app_command_message(IsNotDev()) == IsNotDev().message
     assert app_command_message(UserNotAdministrator()) == UserNotAdministrator().message
+
+
+def test_forum_channel_not_found_names_the_command_that_fixes_it():
+    """
+    It is an AppCommandError so discord.py re-raises it instead of wrapping it in
+    CommandInvokeError, which is what lets it reach here rather than falling
+    through to the generic message.
+    """
+    message = app_command_message(ForumChannelNotFound())
+    assert message is not None
+    assert "/set_forum_channel" in message
 
 
 def test_missing_permissions_names_the_permission():

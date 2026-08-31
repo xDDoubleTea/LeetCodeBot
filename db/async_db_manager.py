@@ -1,5 +1,6 @@
 import logging
 from contextvars import ContextVar
+from typing import Literal
 
 from discord import Client
 from discord.ext.commands import Bot
@@ -48,7 +49,7 @@ class AsyncDatabaseManager:
         _session_stack.set((*_session_stack.get(), session))
         return session
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb) -> bool:
+    async def __aexit__(self, exc_type, exc_val, exc_tb) -> Literal[False]:
         stack = _session_stack.get()
         if not stack:
             logger.error("Database session was not initialized correctly.")
