@@ -1,4 +1,5 @@
 import logging
+from typing import TYPE_CHECKING
 
 import discord
 import re2
@@ -6,14 +7,16 @@ from discord import ForumChannel, app_commands
 from discord.ext import commands
 
 from db.problem_threads import ProblemThreads
-from main import LeetCodeBot
 from utils.thread_titles import DEFAULT_TITLE_PATTERN, problem_id_from_title
+
+if TYPE_CHECKING:
+    from main import LeetCodeBot
 
 logger = logging.getLogger(__name__)
 
 
 class Migration(commands.Cog):
-    def __init__(self, bot: LeetCodeBot):
+    def __init__(self, bot: "LeetCodeBot") -> None:
         self.bot = bot
         self.database_manager = bot.database_manager
 
@@ -139,5 +142,5 @@ class Migration(commands.Cog):
         return tagged
 
 
-async def setup(bot: LeetCodeBot) -> None:
+async def setup(bot: "LeetCodeBot") -> None:
     await bot.add_cog(Migration(bot))

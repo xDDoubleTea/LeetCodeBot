@@ -1,15 +1,17 @@
 import logging
+from typing import TYPE_CHECKING
 
 from discord import Interaction, app_commands
 from discord.ext.commands import Cog
 
-from main import LeetCodeBot
+if TYPE_CHECKING:
+    from main import LeetCodeBot
 
 logger = logging.getLogger(__name__)
 
 
 class ProblemListCog(Cog):
-    def __init__(self, bot: LeetCodeBot) -> None:
+    def __init__(self, bot: "LeetCodeBot") -> None:
         self.bot = bot
         self.database_manager = bot.database_manager
         self.leetcode_problem_manager = bot.leetcode_problem_manger
