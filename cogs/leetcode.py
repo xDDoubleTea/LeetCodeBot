@@ -433,11 +433,12 @@ class LeetCode(commands.Cog):
             )
 
     @app_commands.command(
-        name="recent-submissions", description="Get user's recent submissions."
+        name="recent-submissions",
+        description="Get user's recent submissions. LeetCode only allows a maximum of 20 submissions with unauthorized access.",
     )
     @app_commands.describe(
         leetcode_username="The LeetCode user name.",
-        limit="How many submissions you want. 1 <= limit <= 100",
+        limit="How many submissions you want. 1 <= limit <= 20",
     )
     @app_commands.guild_only()
     async def recent_submissions(
