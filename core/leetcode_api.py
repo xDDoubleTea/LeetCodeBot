@@ -347,7 +347,7 @@ class LeetCodeAPI:
         if not query:
             raise QueryNotFound(f"Query not found for method: {method_name}")
 
-        limit = min(limit, 100)
+        limit = min(limit, 20)
         limit = max(limit, 1)
 
         response = await self.session.post(
