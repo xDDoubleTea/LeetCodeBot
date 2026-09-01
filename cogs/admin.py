@@ -1,4 +1,5 @@
 import logging
+from typing import TYPE_CHECKING
 
 import discord
 from discord.ext import commands
@@ -8,10 +9,12 @@ from discord.ext.commands.errors import ExtensionAlreadyLoaded, ExtensionNotLoad
 from utils.checks import is_me_command
 
 logger = logging.getLogger(__name__)
+if TYPE_CHECKING:
+    from main import LeetCodeBot
 
 
 class admin(Cog):
-    def __init__(self, bot: commands.Bot):
+    def __init__(self, bot: "LeetCodeBot"):
         self.bot = bot
 
     @commands.command(name="load", hidden=True)
@@ -154,5 +157,5 @@ class admin(Cog):
         await ctx.send("\n".join(lines))
 
 
-async def setup(client):
-    await client.add_cog(admin(client))
+async def setup(bot: "LeetCodeBot"):
+    await bot.add_cog(admin(bot))

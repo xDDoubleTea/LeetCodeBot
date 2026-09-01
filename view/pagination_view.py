@@ -6,6 +6,8 @@ import discord
 from discord import Embed, Interaction, Message, SelectOption
 from discord.ui import Button, Select, View, button
 
+from db.problem import Problem
+from models.leetcode import UserSubmission
 from models.pagination import (
     AllTagsPageMeta,
     BasePageMetaData,
@@ -24,18 +26,19 @@ type SelectCallback = Callable[
 ]
 
 
-class BasePaginationView[MetaT: BasePageMetaData](View):
+class BasePaginationView[MetaT: BasePageMetaData, ItemT](View):
     def __init__(
         self,
         *,
         timeout: int | None = 180,
         metadata: MetaT,
-        data: list[Any],
-        format_page: Callable[[MetaT, list[Any]], Embed],
+        data: list[ItemT],
+        format_page: Callable[[MetaT, list[ItemT]], Embed],
         items_per_page: int = 10,
         attached_message: Message | None = None,
         ephemeral=True,
-        select_options_builder: Callable[[list[Any]], list[SelectOption]] | None = None,
+        select_options_builder: Callable[[list[ItemT]], list[SelectOption]]
+        | None = None,
         select_callback: SelectCallback | None = None,
         select_placeholder: str = "Select an option...",
     ):
@@ -197,7 +200,9 @@ class BasePaginationView[MetaT: BasePageMetaData](View):
                 return
 
 
-ProblemTitlePaginationView = BasePaginationView[ProblemTitlePageMeta]
-FilterbyTagPaginationView = BasePaginationView[FilterbyTagPageMeta]
-AllTagsPaginationView = BasePaginationView[AllTagsPageMeta]
-UserSubmissionPaginationView = BasePaginationView[UserSubmissionPageMeta]
+ProblemTitlePaginationView = BasePaginationView[ProblemTitlePageMeta, Problem]
+FilterbyTagPaginationView = BasePaginationView[FilterbyTagPageMeta, Problem]
+AllTagsPaginationView = BasePaginationView[AllTagsPageMeta, str]
+UserSubmissionPaginationView = BasePaginationView[
+    UserSubmissionPageMeta, UserSubmission
+]

@@ -8,7 +8,13 @@ from markdownify import MarkdownConverter
 
 from config.constants import PREVIEW_LEN
 from db.problem import Problem, TopicTags
-from models.leetcode import ProblemDifficulity, UserInfo
+from models.leetcode import ProblemDifficulity, UserInfo, UserSubmission
+from models.pagination import (
+    AllTagsPageMeta,
+    FilterbyTagPageMeta,
+    ProblemTitlePageMeta,
+    UserSubmissionPageMeta,
+)
 from utils.embed_utils import create_themed_embed
 
 logger = logging.getLogger(__name__)
@@ -185,3 +191,69 @@ def get_problem_desc_embed(
             embeds.append(img_embed)
 
     return embeds
+
+
+def format_submissions(
+    metadata: UserSubmissionPageMeta,
+    submission_list: list[UserSubmission],
+) -> Embed:
+    embed = create_themed_embed(
+        title=f"Recent Submissions for {metadata.leetcode_username}",
+        description=f"Total submissions fetched {metadata.data_len}",
+        client=metadata.client,
+    )
+    for submission in submission_list:
+        embed.add_field(
+            name=f"{submission.frontend_id}. {submission.title} submission status",
+            value=f"""
+- [View submission on LeetCode]({submission.url})
+- [View Problem](https://leetcode.com/problems/{submission.title_slug})
+- Language: {submission.lang_name}
+- Time: <t:{submission.timestamp}:f>
+- Runtime: {submission.runtime}
+- Memory: {submission.memory}
+- Status: {submission.status_display}
+            """,
+            inline=False,
+        )
+
+    return embed
+
+
+def format_problem(
+    metadata: ProblemTitlePageMeta | FilterbyTagPageMeta,
+    problems_list: list[Problem],
+) -> Embed:
+    embed_title = ""
+    if isinstance(metadata, ProblemTitlePageMeta):
+        embed_title = f"Problem title matching '{metadata.search_regex}'"
+    elif isinstance(metadata, FilterbyTagPageMeta):
+        embed_title = f"Filtered by tag '{metadata.tag_name_query}'"
+
+    embed = create_themed_embed(
+        title=embed_title,
+        description=f"Total problems found: {metadata.data_len}",
+        client=metadata.client,
+    )
+    for problem in problems_list:
+        embed.add_field(
+            name=f"{problem.problem_frontend_id}. {problem.title} [{ProblemDifficulity.from_db_repr(problem.difficulty).value[1]}]",
+            value=problem.url,
+            inline=False,
+        )
+    return embed
+
+
+def format_tags(metadata: AllTagsPageMeta, tags_list: list[str]) -> Embed:
+    embed = create_themed_embed(
+        title="All available tags",
+        description=f"Total tags found: {metadata.data_len}",
+        client=metadata.client,
+    )
+    for tag in tags_list:
+        embed.add_field(
+            name="Tag name",
+            value=tag,
+            inline=False,
+        )
+    return embed
