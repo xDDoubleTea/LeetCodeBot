@@ -66,3 +66,20 @@ Generate revisions against a database built by migrations. The deployed database
 - Conventional Commits.
 - Branch off `main`, open a PR, wait for checks, squash-merge. Never commit to `main`.
 - Known typo in a public attribute: `bot.leetcode_problem_manger`.
+
+Filing an issue: use the templates in `.github/ISSUE_TEMPLATE/` — `bug_report.md` or
+`feature_request.md` — and keep their headings rather than inventing a structure.
+`gh issue create` does **not** apply them on its own. `--template` does, but only
+interactively, so from a non-interactive session strip the frontmatter and pass the
+body:
+
+```bash
+sed -n '/^---$/,/^---$/!p' .github/ISSUE_TEMPLATE/bug_report.md > /tmp/issue.md
+# fill /tmp/issue.md in, then:
+gh issue create --title "..." --body-file /tmp/issue.md
+```
+
+Both are GitHub's stock templates. The Desktop/Smartphone/Browser blocks in
+`bug_report.md` do not apply to a bot with no web surface — replace that section with
+what actually identifies a deployment: Python version, whether it is the homelab
+container or a local run, and the relevant log lines.
