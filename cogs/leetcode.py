@@ -3,10 +3,8 @@ from typing import TYPE_CHECKING, Literal
 
 from discord import (
     DMChannel,
-    Embed,
     Guild,
     Interaction,
-    SelectOption,
     Thread,
     app_commands,
 )
@@ -14,21 +12,18 @@ from discord.channel import ForumChannel, ThreadWithMessage
 from discord.ext import commands, tasks
 
 from config.constants import LEETCODE_API_REFRESH_TIME, THEME_COLOR
-from db.problem import Problem
-from models.leetcode import (
-    ProblemDifficulity,
-    ProblemWithTags,
-    ThreadCreationEnum,
-    UserSubmission,
-)
+from models.leetcode import ProblemWithTags, ThreadCreationEnum
 from models.pagination import (
     AllTagsPageMeta,
     FilterbyTagPageMeta,
     ProblemTitlePageMeta,
     UserSubmissionPageMeta,
 )
-from utils import embed_utils
+from utils.build_page_option import build_problem_options
 from utils.embed_presenters import (
+    format_problem,
+    format_submissions,
+    format_tags,
     get_user_info_embed,
 )
 from utils.handle_leetcode_interation import handle_leetcode_interaction
@@ -74,84 +69,6 @@ class LeetCode(commands.Cog):
 
     async def cog_unload(self) -> None:
         self.daily_cache_refresh.cancel()
-
-    def format_submissions(
-        self,
-        metadata: UserSubmissionPageMeta,
-        submission_list: list[UserSubmission],
-    ) -> Embed:
-        embed = embed_utils.create_themed_embed(
-            title=f"Recent Submissions for {metadata.leetcode_username}",
-            description=f"Total submissions fetched {metadata.data_len}",
-            client=metadata.client,
-        )
-        for submission in submission_list:
-            embed.add_field(
-                name=f"{submission.frontend_id}. {submission.title} submission status",
-                value=f"""
-- [View submission on LeetCode]({submission.url})
-- [View Problem](https://leetcode.com/problems/{submission.title_slug})
-- Language: {submission.lang_name}
-- Time: <t:{submission.timestamp}:f>
-- Runtime: {submission.runtime}
-- Memory: {submission.memory}
-- Status: {submission.status_display}
-                """,
-                inline=False,
-            )
-
-        return embed
-
-    def format_problem(
-        self,
-        metadata: ProblemTitlePageMeta | FilterbyTagPageMeta,
-        problems_list: list[Problem],
-    ) -> Embed:
-        embed_title = ""
-        if isinstance(metadata, ProblemTitlePageMeta):
-            embed_title = f"Problem title matching '{metadata.search_regex}'"
-        elif isinstance(metadata, FilterbyTagPageMeta):
-            embed_title = f"Filtered by tag '{metadata.tag_name_query}'"
-
-        embed = embed_utils.create_themed_embed(
-            title=embed_title,
-            description=f"Total problems found: {metadata.data_len}",
-            client=metadata.client,
-        )
-        for problem in problems_list:
-            embed.add_field(
-                name=f"{problem.problem_frontend_id}. {problem.title} [{ProblemDifficulity.from_db_repr(problem.difficulty).value[1]}]",
-                value=problem.url,
-                inline=False,
-            )
-        return embed
-
-    def format_tags(self, metadata: AllTagsPageMeta, tags_list: list[str]) -> Embed:
-        embed = embed_utils.create_themed_embed(
-            title="All available tags",
-            description=f"Total tags found: {metadata.data_len}",
-            client=metadata.client,
-        )
-        for tag in tags_list:
-            embed.add_field(
-                name="Tag name",
-                value=tag,
-                inline=False,
-            )
-        return embed
-
-    def build_problem_options(
-        self, cur_page_problem: list[Problem]
-    ) -> list[SelectOption]:
-        return [
-            SelectOption(
-                label=f"{p.problem_frontend_id}. {p.title} [{ProblemDifficulity.from_db_repr(p.difficulty).value[1]}]"[
-                    :100
-                ],
-                value=str(p.problem_frontend_id),
-            )
-            for p in cur_page_problem
-        ]
 
     async def handle_problem_select(
         self, interaction: Interaction, view: BasePaginationView, values: list[str]
@@ -229,9 +146,9 @@ class LeetCode(commands.Cog):
             view = ProblemTitlePaginationView(
                 metadata=metadata,
                 data=problems_list,
-                format_page=self.format_problem,
+                format_page=format_problem,
                 ephemeral=False,
-                select_options_builder=self.build_problem_options,
+                select_options_builder=build_problem_options,
                 select_callback=self.handle_problem_select,
                 select_placeholder="Select a problem to open/create thread...",
             )
@@ -275,7 +192,7 @@ class LeetCode(commands.Cog):
         view = AllTagsPaginationView(
             metadata=metadata,
             data=all_tags,
-            format_page=self.format_tags,
+            format_page=format_tags,
             ephemeral=False,
             items_per_page=15,
         )
@@ -319,9 +236,9 @@ class LeetCode(commands.Cog):
         view = FilterbyTagPaginationView(
             metadata=metadata,
             data=filtered_list,
-            format_page=self.format_problem,
+            format_page=format_problem,
             ephemeral=False,
-            select_options_builder=self.build_problem_options,
+            select_options_builder=build_problem_options,
             select_callback=self.handle_problem_select,
             select_placeholder="Select a problem to open/create thread...",
         )
@@ -559,7 +476,7 @@ class LeetCode(commands.Cog):
                 metadata=metadata,
                 data=submissions_list,
                 items_per_page=5,
-                format_page=self.format_submissions,
+                format_page=format_submissions,
                 ephemeral=False,
             )
 
@@ -574,5 +491,5 @@ class LeetCode(commands.Cog):
             )
 
 
-async def setup(bot) -> None:
+async def setup(bot: "LeetCodeBot") -> None:
     await bot.add_cog(LeetCode(bot))
