@@ -27,9 +27,11 @@ class HelpCog(commands.Cog):
         )
         for cmd in all_slash_cmds:
             if isinstance(cmd, app_commands.Group):
-                continue  # Skip groups for simplicity
+                # Subcommands are listed under their parent, not on their own.
+                continue
             elif cmd.extras.get("hidden", False):
-                continue  # Skip hidden commands
+                # extras["hidden"] is how a command opts out of the listing.
+                continue
 
             value = cmd.description or "No description available."
             parameters_str = ""
@@ -47,7 +49,6 @@ class HelpCog(commands.Cog):
                 value=value,
                 inline=False,
             )
-        # Add more commands as needed
         return embed
 
     @app_commands.command(name="help", description="Get help about the bot's commands")

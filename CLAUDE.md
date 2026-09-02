@@ -66,6 +66,7 @@ Generate revisions against a database built by migrations. The deployed database
 - Conventional Commits.
 - Branch off `main`, open a PR, wait for checks, squash-merge. Never commit to `main`.
 - Known typo in a public attribute: `bot.leetcode_problem_manger`.
+- No inline comments unless specified in the prompt. Docs strings should use doc-style skill.
 
 Filing an issue: use the templates in `.github/ISSUE_TEMPLATE/` — `bug_report.md` or
 `feature_request.md` — and keep their headings rather than inventing a structure.

@@ -37,7 +37,6 @@ def handle_leetcode_interaction(is_daily: bool = False):
                             "Daily problem not found. Check the leetcode api by /check_leetcode_api."
                         )
                     else:
-                        # Attempt to retrieve ID for a better error message if available
                         problem_id = kwargs.get("id")
                         if problem_id:
                             await interaction.followup.send(

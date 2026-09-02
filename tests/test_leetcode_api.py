@@ -9,11 +9,6 @@ from models.leetcode import ProblemDifficulity
 # We will patch db.problem.Problem and db.problem.TopicTags
 # when these are imported into core/leetcode_api.py and core/leetcode_problem.py.
 
-# The logger fixture is now in conftest.py
-# @pytest.fixture
-# def mock_logger():
-#     return MagicMock(spec=logging.Logger)
-
 
 @pytest.fixture
 def mock_session():

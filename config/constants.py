@@ -6,7 +6,8 @@ command_prefix = ">"
 
 tz = datetime.timezone(datetime.timedelta(hours=8))
 LEETCODE_API_REFRESH_TIME = datetime.time(hour=8, minute=5, tzinfo=tz)
-MY_GUILD = discord.Object(1039906085626196079)  # Replace with your guild ID
+# Replace with your guild ID.
+MY_GUILD = discord.Object(1039906085626196079)
 
 # For embed description
 PREVIEW_LEN = 4000
@@ -25,7 +26,8 @@ MIGRATE_SCAN_PER = 300.0
 THREAD_COMMAND_RATE = 3
 THREAD_COMMAND_PER = 30.0
 
-DEV_ID = 398444155132575756  # Replace with your Discord user ID
+# Replace with your Discord user ID.
+DEV_ID = 398444155132575756
 
 THEME_COLOR = discord.Color.green()
 

@@ -141,11 +141,10 @@ def get_user_info_embed(
 
 def get_embed_color(difficulty_db_repr: int) -> discord.Color:
     try:
-        # logger.debug(f"Getting embed color for difficulty {difficulty_db_repr}")
         difficulty = ProblemDifficulity.from_db_repr(difficulty_db_repr)
         return difficulty.embed_color
     except Exception:
-        return discord.Color.blue()  # Default to blue if unknown
+        return discord.Color.blue()
 
 
 def get_problem_desc_pictures(content: str) -> list[str]:

@@ -37,9 +37,6 @@ class IsNotDev(CommandError, AppCommandError):
         super().__init__(self.message)
 
 
-# --- The Check Function ---
-
-
 def is_me_command():
     async def predicate(ctx: Context) -> bool:
         if not ctx.author.id == DEV_ID:
@@ -71,9 +68,7 @@ def is_administrator():
         if interaction.user.id == DEV_ID:
             return True
 
-        # Check for guild context and administrator permissions.
         if not interaction.guild:
-            # This check is not applicable in DMs, so we deny.
             return False
 
         assert isinstance(interaction.user, Member)
