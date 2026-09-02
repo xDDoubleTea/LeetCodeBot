@@ -19,6 +19,7 @@ from discord.ext.commands.errors import (
     MissingPermissions,
     MissingRequiredArgument,
 )
+from discord.ui import Item
 
 from utils.checks import IsNotDev, UserNotAdministrator
 from utils.custom_exceptions import ForumChannelNotFound
@@ -28,7 +29,7 @@ logger = logging.getLogger(__name__)
 UNEXPECTED_MESSAGE = "Something went wrong running that command."
 
 
-def app_command_message(error: AppCommandError) -> str | None:
+def app_command_message(error: Exception) -> str | None:
     """
     The reply for an error a user can do something about, or None when the error
     is a bug and should be logged instead.
@@ -90,6 +91,27 @@ async def respond(interaction: Interaction, message: str) -> None:
         # The interaction may have expired, or the command may have used up its
         # response already; nothing more can be done for the user here.
         logger.warning("Could not deliver the error message", exc_info=e)
+
+
+async def handle_component_error(
+    interaction: Interaction, error: Exception, item: Item
+) -> None:
+    """
+    Handler for `discord.ui` component callbacks, wired up as `View.on_error`.
+
+    Applies the same user-facing/bug split the command families get, so an
+    error raised from a button or select menu reaches the user as a reply.
+    """
+    label = getattr(item, "placeholder", None) or type(item).__name__
+
+    message = app_command_message(error)
+    if message is None:
+        logger.exception(f"Unhandled error in component {label}", exc_info=error)
+        message = UNEXPECTED_MESSAGE
+    else:
+        logger.info(f"Component {label} refused for {interaction.user.id}: {message}")
+
+    await respond(interaction, message)
 
 
 async def handle_command_error(ctx: Context, error: CommandError) -> None:

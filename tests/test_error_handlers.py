@@ -23,6 +23,7 @@ from utils.error_handlers import (
     ErrorHandlingTree,
     app_command_message,
     handle_command_error,
+    handle_component_error,
     respond,
 )
 from utils.tag_transformer import TagTransformer
@@ -200,3 +201,48 @@ async def test_tree_replies_with_the_check_message():
     await tree.on_error(interaction, IsNotDev())  # type: ignore[arg-type]
 
     assert interaction.response.sent == [(IsNotDev().message, True)]
+
+
+class FakeSelect:
+    def __init__(self, placeholder: str | None = "Select a problem..."):
+        self.placeholder = placeholder
+
+
+async def test_component_error_shows_the_user_facing_message():
+    """
+    The reported bug: picking a problem from /filter-by-tag in a guild with no
+    forum channel raised ForumChannelNotFound inside the select callback, and
+    the user saw nothing at all.
+    """
+    interaction = FakeInteraction(done=False)
+    error = ForumChannelNotFound()
+
+    await handle_component_error(interaction, error, FakeSelect())  # type: ignore[arg-type]
+
+    assert interaction.response.sent == [(error.message, True)]
+
+
+async def test_component_bug_gets_the_generic_message(caplog):
+    interaction = FakeInteraction(done=False)
+
+    await handle_component_error(interaction, RuntimeError("boom"), FakeSelect())  # type: ignore[arg-type]
+
+    assert interaction.response.sent == [(UNEXPECTED_MESSAGE, True)]
+    assert "boom" in caplog.text
+
+
+async def test_component_error_after_a_response_uses_the_followup():
+    interaction = FakeInteraction(done=True)
+
+    await handle_component_error(interaction, IsNotDev(), FakeSelect())  # type: ignore[arg-type]
+
+    assert interaction.followup.sent == [(IsNotDev().message, True)]
+    assert interaction.response.sent == []
+
+
+async def test_component_without_a_placeholder_is_logged_by_type(caplog):
+    interaction = FakeInteraction(done=False)
+
+    await handle_component_error(interaction, RuntimeError("boom"), FakeSelect(None))  # type: ignore[arg-type]
+
+    assert "FakeSelect" in caplog.text

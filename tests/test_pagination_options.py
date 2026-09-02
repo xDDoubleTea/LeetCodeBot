@@ -17,6 +17,7 @@ from discord import Color
 from db.problem import Problem
 from models.pagination import ProblemTitlePageMeta
 from utils.build_page_option import build_problem_options
+from utils.custom_exceptions import ForumChannelNotFound
 from view.pagination_view import ProblemTitlePaginationView
 
 
@@ -101,3 +102,34 @@ async def test_building_the_view_with_no_results_disables_the_select():
 
     assert view.select_menu is not None
     assert view.select_menu.disabled
+
+
+async def test_view_routes_component_errors_to_the_global_handler():
+    """
+    discord.ui.View catches component failures itself and sends them to its own
+    on_error, which by default only logs. Without the override the select menu
+    fails silently and the user sees "This interaction failed".
+    """
+    problems = [make_problem(1, "Two Sum", 0)]
+    view = ProblemTitlePaginationView(
+        metadata=make_metadata(len(problems)),
+        data=problems,
+        format_page=lambda metadata, page: MagicMock(),
+        select_options_builder=build_problem_options,
+        select_callback=MagicMock(),
+    )
+
+    sent: list[tuple[str, bool]] = []
+    interaction = MagicMock()
+    interaction.response.is_done.return_value = False
+    interaction.user.id = 1
+
+    async def capture(message, ephemeral=False):
+        sent.append((message, ephemeral))
+
+    interaction.response.send_message = capture
+
+    error = ForumChannelNotFound()
+    await view.on_error(interaction, error, view.select_menu)
+
+    assert sent == [(error.message, True)]
