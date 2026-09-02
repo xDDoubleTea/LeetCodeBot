@@ -4,7 +4,7 @@ from typing import Any
 
 import discord
 from discord import Embed, Interaction, Message, SelectOption
-from discord.ui import Button, Select, View, button
+from discord.ui import Button, Item, Select, View, button
 
 from db.problem import Problem
 from models.leetcode import UserSubmission
@@ -16,6 +16,7 @@ from models.pagination import (
     ProblemTitlePageMeta,
     UserSubmissionPageMeta,
 )
+from utils.error_handlers import handle_component_error
 
 logger = logging.getLogger(__name__)
 
@@ -73,6 +74,12 @@ class BasePaginationView[MetaT: BasePageMetaData, ItemT](View):
         self.add_item(self.select_menu)
 
         self._update_select_options()
+
+    async def on_error(
+        self, interaction: Interaction, error: Exception, item: Item
+    ) -> None:
+        """Route component failures through the global error handler."""
+        await handle_component_error(interaction, error, item)
 
     def _get_current_page_data(self) -> list[Any]:
         start = self.current_page * self.items_per_page
