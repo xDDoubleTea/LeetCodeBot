@@ -17,6 +17,14 @@ PREVIEW_LEN = 4000
 MIGRATE_SCAN_RATE = 1
 MIGRATE_SCAN_PER = 300.0
 
+# /problem, /daily and /random: three thread creations per member per guild per
+# thirty seconds. Each one can create a forum thread and its starter message, so
+# repeated calls spend against Discord's channel-creation limits, and a member who
+# keeps invoking a command that fails the same way every time posts the reply into
+# the channel each attempt.
+THREAD_COMMAND_RATE = 3
+THREAD_COMMAND_PER = 30.0
+
 DEV_ID = 398444155132575756  # Replace with your Discord user ID
 
 THEME_COLOR = discord.Color.green()
