@@ -5,10 +5,13 @@ import pytest
 from core.leetcode_api import LeetCodeAPI
 from core.leetcode_problem import LeetCodeProblemManager
 from db.async_db_manager import AsyncDatabaseManager
+
+# The real models, not mocks: the tests instantiate them and read their
+# relationships.
 from db.problem import (
     Problem,
     TopicTags,
-)  # Use actual Problem/TopicTags for instantiation
+)
 from models.leetcode import ProblemWithTags
 
 
@@ -38,7 +41,8 @@ def mock_db_session():
 def mock_db_manager(mock_db_session):
     manager = MagicMock(spec=AsyncDatabaseManager)
     manager.__aenter__.return_value = mock_db_session
-    manager.__aexit__.return_value = False  # Don't suppress exceptions
+    # Falsy, so the manager does not suppress exceptions raised in the block.
+    manager.__aexit__.return_value = False
     return manager
 
 
@@ -134,10 +138,7 @@ async def test_get_daily_problem_fetch_new(manager, mock_db_session):
 
     mock_db_session.scalars.return_value.first.return_value = None
 
-    # Mocking the problem added to db.add
-    mock_db_session.add.side_effect = lambda x: setattr(
-        x, "tags", list(tags)
-    )  # Simulate adding tags to problem
+    mock_db_session.add.side_effect = lambda x: setattr(x, "tags", list(tags))
 
     result = await manager.get_daily_problem()
 
@@ -194,8 +195,6 @@ async def test_refresh_cache_success(manager, mock_db_session):
         1: ProblemWithTags(problem=p1, tags={t1}),
         2: ProblemWithTags(problem=p2, tags={t2}),
     }
-
-    # api_data = {1: {"problem": p1, "tags": {t1}}, 2: {"prblem": p2, "tags": {t2}}}
 
     manager.leetcode_api.fetch_all_problems.return_value = api_data
 

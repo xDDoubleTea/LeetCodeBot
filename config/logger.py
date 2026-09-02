@@ -37,8 +37,6 @@ def setup_logger(log_level: int = logging.INFO):
     console_handler.setFormatter(formatter)
     main_file_handler.setFormatter(formatter)
 
-    # -------- DB Logger --------
-
     db_logger = logging.getLogger("sqlalchemy.engine")
     db_logger.setLevel(logging.WARNING)
     db_file_handler = logging.handlers.TimedRotatingFileHandler(

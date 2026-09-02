@@ -107,10 +107,8 @@ class LeetCodeProblemManager:
                     )
             logger.debug(f"Problem-Tag Associations: {associations[:2]} ...")
             if associations:
-                # First, clear all existing associations to ensure a clean slate
                 await db.execute(problem_tags_association.delete())
 
-                # Use the imported problem_tags_association Table object
                 insert_stmt = sqlite_upsert(
                     problem_tags_association
                 ).on_conflict_do_nothing(index_elements=["problem_id", "tag_id"])
@@ -410,7 +408,6 @@ class LeetCodeProblemManager:
                 # tags collection, so it needs the same treatment.
                 await db.refresh(db_problem, attribute_names=["tags"])
 
-            # Handle tags
             logger.info(f"Associating tags with problem ID {db_problem.problem_id}.")
             for tag in tags:
                 stmt = select(TopicTags).where(TopicTags.tag_name == tag.tag_name)
