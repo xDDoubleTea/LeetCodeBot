@@ -11,7 +11,12 @@ from discord import (
 from discord.channel import ForumChannel, ThreadWithMessage
 from discord.ext import commands, tasks
 
-from config.constants import LEETCODE_API_REFRESH_TIME, THEME_COLOR
+from config.constants import (
+    LEETCODE_API_REFRESH_TIME,
+    THEME_COLOR,
+    THREAD_COMMAND_PER,
+    THREAD_COMMAND_RATE,
+)
 from models.leetcode import ProblemWithTags, ThreadCreationEnum
 from models.pagination import (
     AllTagsPageMeta,
@@ -20,6 +25,7 @@ from models.pagination import (
     UserSubmissionPageMeta,
 )
 from utils.build_page_option import build_problem_options
+from utils.cooldowns import thread_command_key
 from utils.embed_presenters import (
     format_problem,
     format_submissions,
@@ -361,6 +367,11 @@ class LeetCode(commands.Cog):
 
     @app_commands.command(name="daily", description="Get today's LeetCode problem")
     @app_commands.guild_only()
+    @app_commands.checks.cooldown(
+        THREAD_COMMAND_RATE,
+        THREAD_COMMAND_PER,
+        key=thread_command_key,
+    )
     @handle_leetcode_interaction(is_daily=True)
     async def daily_problem(self, interaction: Interaction) -> ProblemWithTags:
         assert interaction.guild
@@ -375,6 +386,11 @@ class LeetCode(commands.Cog):
     )
     @app_commands.describe(id="The ID of the LeetCode problem")
     @app_commands.guild_only()
+    @app_commands.checks.cooldown(
+        THREAD_COMMAND_RATE,
+        THREAD_COMMAND_PER,
+        key=thread_command_key,
+    )
     @handle_leetcode_interaction(is_daily=False)
     async def leetcode_problem(
         self, interaction: Interaction, id: int
@@ -394,6 +410,11 @@ class LeetCode(commands.Cog):
         premium="Whether to include premium problems, default is False",
     )
     @app_commands.guild_only()
+    @app_commands.checks.cooldown(
+        THREAD_COMMAND_RATE,
+        THREAD_COMMAND_PER,
+        key=thread_command_key,
+    )
     @handle_leetcode_interaction(is_daily=False)
     async def random_problem(
         self,
