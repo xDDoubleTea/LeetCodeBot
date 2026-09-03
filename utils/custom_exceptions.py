@@ -5,6 +5,27 @@ from discord.app_commands import AppCommandError
 logger = logging.getLogger(__name__)
 
 
+class FetchError(Exception):
+    """
+    Raised when LeetCode API caller cannot fetch data.
+    """
+
+    def __init__(
+        self,
+        error_response: dict | None,
+        message: str = ("Something is wrong when fetching"),
+    ):
+        self.message = message
+        self.error_response = error_response
+        super().__init__(message)
+
+
+class QueryNotFound(Exception):
+    """
+    Raised when a GraphQL query is not found
+    """
+
+
 class ForumChannelNotFound(AppCommandError):
     """
     Raised when a guild has no usable forum channel for problem threads.
@@ -35,3 +56,35 @@ class CacheInitError(Exception):
     exists; /refresh is the only command that can trigger it and it reports the
     failure itself.
     """
+
+
+class DuplicateLinkName(ValueError):
+    """
+    Raised when a user is trying to create a list with name that they already have created with.
+    """
+
+    def __init__(
+        self,
+        message: str = ("You already created a list with that name!"),
+    ):
+        self.message = message
+        super().__init__(message)
+
+
+class NotLinkedError(Exception):
+    """
+    Raised when a user has not linked their leetcode user name to their discord account.
+    """
+
+
+class LeetCodeUserNameNotFound(Exception):
+    """
+    Raised when a LeetCode user name is not found.
+    """
+
+    def __init__(
+        self,
+        message: str = ("That user name is invalid. Check for typo."),
+    ):
+        self.message = message
+        super().__init__(message)
