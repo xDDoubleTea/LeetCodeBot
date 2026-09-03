@@ -1,5 +1,5 @@
 import logging
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Literal, Optional
 
 from discord import (
     DMChannel,
@@ -25,7 +25,8 @@ from models.pagination import (
     UserSubmissionPageMeta,
 )
 from utils.build_page_option import build_problem_options
-from utils.cooldowns import thread_command_key
+from utils.cooldowns import thread_command_key, user_command_key
+from utils.custom_exceptions import LeetCodeUserNameNotFound, NotLinkedError
 from utils.embed_presenters import (
     format_problem,
     format_submissions,
@@ -434,17 +435,39 @@ class LeetCode(commands.Cog):
 
     @app_commands.command(name="statistics", description="Get user statistics")
     @app_commands.describe(leetcode_username="The LeetCode username")
+    @app_commands.guild_only()
+    @app_commands.checks.cooldown(
+        THREAD_COMMAND_RATE,
+        THREAD_COMMAND_PER,
+        key=user_command_key,
+    )
     async def user_statistics(
-        self, interaction: Interaction, leetcode_username: str
+        self, interaction: Interaction, leetcode_username: str | None
     ) -> None:
         await interaction.response.defer(thinking=True, ephemeral=False)
         try:
+            link = None
+            if leetcode_username is None:
+                link = await self.bot.leetcode_discord_link_manager.get_link_with_discord_user_id(
+                    discord_user_id=interaction.user.id
+                )
+                leetcode_username = link.leetcode_user_name
+
+            logger.debug(link)
+
             info = await self.leetcode_api.user_info(username=leetcode_username)
             logger.debug(info)
             embed = get_user_info_embed(
                 username=leetcode_username, info=info, bot=self.bot
             )
             await interaction.followup.send(embed=embed)
+        except NotLinkedError:
+            await interaction.followup.send(
+                "You haven't linked your discord to leetcode account yet! Link with /link and follow the instructions!",
+                ephemeral=True,
+            )
+        except LeetCodeUserNameNotFound as e:
+            await interaction.followup.send(e.message, ephemeral=True)
         except Exception as e:
             logger.error(
                 "Something went wrong when fetching user statistics.", exc_info=e
@@ -463,11 +486,20 @@ class LeetCode(commands.Cog):
     )
     @app_commands.guild_only()
     async def recent_submissions(
-        self, interaction: Interaction, leetcode_username: str, limit: int = 20
+        self, interaction: Interaction, leetcode_username: str | None, limit: int = 20
     ) -> None:
         await interaction.response.defer(thinking=True)
 
         try:
+            link = None
+            if leetcode_username is None:
+                link = await self.bot.leetcode_discord_link_manager.get_link_with_discord_user_id(
+                    discord_user_id=interaction.user.id
+                )
+                leetcode_username = link.leetcode_user_name
+
+            logger.debug(link)
+
             submissions_list = await self.leetcode_api.user_submission(
                 username=leetcode_username, limit=limit
             )
@@ -503,6 +535,8 @@ class LeetCode(commands.Cog):
             )
 
             await view.send_initial_message(interaction=interaction, followup=True)
+        except LeetCodeUserNameNotFound as e:
+            await interaction.response.send_message(e.message, ephemeral=True)
         except Exception as e:
             logger.error(
                 "Something went wrong when fetching user's recent submissions.",
