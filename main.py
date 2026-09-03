@@ -18,6 +18,7 @@ from config.constants import command_prefix
 from config.logger import setup_logger
 from config.secrets import DATABASE_URL, bot_token, debug
 from core.leetcode_api import LeetCodeAPI
+from core.leetcode_dc_link import LeetCodeDCLinkManager
 from core.leetcode_problem import LeetCodeProblemManager
 from core.problem_threads import ProblemThreadsManager
 from db.async_db_manager import AsyncDatabaseManager
@@ -45,8 +46,12 @@ async def run_migrations(engine: AsyncEngine) -> None:
     and so could not apply any change to a database that already existed.
     """
     logger.info("Applying database migrations...")
-    async with engine.begin() as conn:
+    async with engine.connect() as conn:  # connect(), not begin() -- no transaction yet
+        await conn.exec_driver_sql("PRAGMA foreign_keys=OFF")
+        await conn.commit()
         await conn.run_sync(_upgrade_to_head)
+        await conn.exec_driver_sql("PRAGMA foreign_keys=ON")
+        await conn.commit()
     logger.info("Database is up to date.")
 
 
@@ -75,15 +80,20 @@ class LeetCodeBot(commands.Bot):
         self.leetcode_api: LeetCodeAPI
         self.leetcode_problem_manger: LeetCodeProblemManager
         self.problem_threads_manager: ProblemThreadsManager
-        self.session: aiohttp.ClientSession
+        self.leetcode_discord_link_manager: LeetCodeDCLinkManager
+        self.aiohttp_session: aiohttp.ClientSession
 
     async def setup_hook(self) -> None:
         self.database_manager: AsyncDatabaseManager = AsyncDatabaseManager(
             self, self.engine
         )
 
-        self.session = aiohttp.ClientSession()
-        self.leetcode_api: LeetCodeAPI = LeetCodeAPI(session=self.session)
+        self.aiohttp_session = aiohttp.ClientSession()
+        self.leetcode_api: LeetCodeAPI = LeetCodeAPI(session=self.aiohttp_session)
+
+        self.leetcode_discord_link_manager = LeetCodeDCLinkManager(
+            async_db_manager=self.database_manager
+        )
         self.leetcode_problem_manger: LeetCodeProblemManager = LeetCodeProblemManager(
             leetcode_api=self.leetcode_api,
             async_database_manager=self.database_manager,
