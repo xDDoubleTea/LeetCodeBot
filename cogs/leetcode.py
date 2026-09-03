@@ -455,7 +455,7 @@ class LeetCode(commands.Cog):
 
     @app_commands.command(
         name="recent-submissions",
-        description="Get user's recent submissions. LeetCode only allows a maximum of 20 submissions with unauthorized access.",
+        description="Get user's recent submissions.",
     )
     @app_commands.describe(
         leetcode_username="The LeetCode user name.",
