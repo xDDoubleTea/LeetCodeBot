@@ -62,6 +62,20 @@ class LeetCodeDCLinkManager:
         for key in keys_to_del:
             del self.pending_verification[key]
 
+    async def init_cache(self):
+        result = []
+        async with self.async_db_manager as db:
+            stmt = select(LeetCodeDCLink)
+            result = list((await db.execute(stmt)).scalars().all())
+
+        dc_to_lc_tmp = {link_entry.discord_user_id: link_entry for link_entry in result}
+        lc_to_dc_tmp = {
+            link_entry.leetcode_user_name: link_entry for link_entry in result
+        }
+
+        self.dc_to_lc_cache = dc_to_lc_tmp
+        self.lc_to_dc_cache = lc_to_dc_tmp
+
     async def upsert_link(
         self, discord_user_id: int, leetcode_user_name: str
     ) -> LeetCodeDCLink:

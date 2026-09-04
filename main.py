@@ -116,6 +116,7 @@ class LeetCodeBot(commands.Bot):
         logger.info("Initializing caches...")
         await self.leetcode_problem_manger.init_cache()
         await self.problem_threads_manager.init_cache()
+        await self.leetcode_discord_link_manager.init_cache()
         logger.info("Caches initialized.")
 
     async def on_command_error(
