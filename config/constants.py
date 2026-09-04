@@ -4,6 +4,7 @@ import discord
 
 COMMAND_PREFIX = ">"
 LEETCODE_VERIFY_TOKEN_PREFIX = "leetcodebot-verify"
+VERIFY_TOKEN_EXPIRATION_PERIOD = datetime.timedelta(minutes=15)
 
 tz = datetime.timezone(datetime.timedelta(hours=8))
 LEETCODE_API_REFRESH_TIME = datetime.time(hour=8, minute=5, tzinfo=tz)

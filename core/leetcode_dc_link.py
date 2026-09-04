@@ -6,7 +6,10 @@ from sqlalchemy import select
 from sqlalchemy.dialects.sqlite import insert as sqlite_upsert
 from sqlalchemy.exc import IntegrityError
 
-from config.constants import LEETCODE_VERIFY_TOKEN_PREFIX
+from config.constants import (
+    LEETCODE_VERIFY_TOKEN_PREFIX,
+    VERIFY_TOKEN_EXPIRATION_PERIOD,
+)
 from core.leetcode_api import LeetCodeAPI
 from db.async_db_manager import AsyncDatabaseManager
 from db.leetcode_dc_link import LeetCodeDCLink
@@ -37,7 +40,10 @@ class LeetCodeDCLinkManager:
 
     @staticmethod
     def _is_expired(verification_entry: VerificationEntry) -> bool:
-        return datetime.now(UTC) - verification_entry.timestamp > timedelta(minutes=15)
+        return (
+            datetime.now(UTC) - verification_entry.timestamp
+            > VERIFY_TOKEN_EXPIRATION_PERIOD
+        )
 
     async def _create_leetcode_dclink_instance(
         self, discord_user_id: int, leetcode_user_name: str
