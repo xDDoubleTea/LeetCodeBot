@@ -1,13 +1,7 @@
 import logging
 from typing import TYPE_CHECKING, Literal
 
-from discord import (
-    DMChannel,
-    Guild,
-    Interaction,
-    Thread,
-    app_commands,
-)
+from discord import DMChannel, Guild, Interaction, Thread, app_commands
 from discord.channel import ForumChannel, ThreadWithMessage
 from discord.ext import commands, tasks
 
@@ -16,6 +10,9 @@ from config.constants import (
     THEME_COLOR,
     THREAD_COMMAND_PER,
     THREAD_COMMAND_RATE,
+    USER_INFO_COMMAND_PER,
+    USER_INFO_COMMAND_RATE,
+    VERIFY_TOKEN_EXPIRATION_PERIOD,
 )
 from models.leetcode import ProblemWithTags, ThreadCreationEnum
 from models.pagination import (
@@ -25,7 +22,16 @@ from models.pagination import (
     UserSubmissionPageMeta,
 )
 from utils.build_page_option import build_problem_options
-from utils.cooldowns import thread_command_key
+from utils.cooldowns import thread_command_key, user_command_key
+from utils.custom_exceptions import (
+    LeetCodeUserNameNotFound,
+    NotLinkedError,
+    VerificationAlreadyFailed,
+    VerificationTokenAlreadyCompleted,
+    VerificationTokenExpired,
+    VerificationTokenNotFound,
+    VerificationTokenNotGenerated,
+)
 from utils.embed_presenters import (
     format_problem,
     format_submissions,
@@ -432,19 +438,104 @@ class LeetCode(commands.Cog):
         logger.debug(f"Problem fetched: {problem}")
         return problem
 
-    @app_commands.command(name="statistics", description="Get user statistics")
+    @app_commands.command(
+        name="link", description="Link discord to your LeetCode account."
+    )
+    @app_commands.checks.cooldown(
+        USER_INFO_COMMAND_RATE,
+        USER_INFO_COMMAND_PER,
+        key=user_command_key,
+    )
+    async def link_dc_to_leetcode(
+        self, interaction: Interaction, leetcode_user_name: str
+    ) -> None:
+        # We just check if the user name exists.
+        try:
+            _ = await self.leetcode_api.user_info(leetcode_user_name)
+        except LeetCodeUserNameNotFound as e:
+            await interaction.response.send_message(e.message, ephemeral=True)
+            return
+
+        await self.bot.leetcode_discord_link_manager.clean_up_stale_verifications()
+
+        tkn = await self.bot.leetcode_discord_link_manager.create_link_verification(
+            interaction.user.id, leetcode_user_name
+        )
+        await interaction.response.send_message(
+            "A special token associated with your discord account was generated!\n"
+            f"Your token: {tkn}.\n"
+            "Append the token to your LeetCode public profile ReadMe section"
+            ", and do `/link-confirm` to complete the link process.\n"
+            f"Note: The token will expire in {VERIFY_TOKEN_EXPIRATION_PERIOD} minutes!",
+            ephemeral=True,
+        )
+
+    @app_commands.command(name="link-confirm", description="Confirm link")
+    @app_commands.checks.cooldown(
+        USER_INFO_COMMAND_RATE,
+        USER_INFO_COMMAND_PER,
+        key=user_command_key,
+    )
+    async def link_confirm(self, interaction: Interaction) -> None:
+        await interaction.response.defer(thinking=True, ephemeral=True)
+        try:
+            link = await self.bot.leetcode_discord_link_manager.link_verify(
+                interaction.user.id
+            )
+            await interaction.followup.send(
+                f"Your discord account is linked with `{link.leetcode_user_name}`! "
+                "You can remove the verification token from your ReadMe now.",
+                ephemeral=True,
+            )
+        except (
+            VerificationTokenAlreadyCompleted,
+            VerificationTokenNotFound,
+            VerificationTokenExpired,
+            LeetCodeUserNameNotFound,
+            VerificationTokenNotGenerated,
+            VerificationAlreadyFailed,
+        ) as e:
+            logger.error(e.message, exc_info=e)
+            await interaction.followup.send(e.message, ephemeral=True)
+        finally:
+            await self.bot.leetcode_discord_link_manager.clean_up_stale_verifications()
+
+    @app_commands.command(name="user-info", description="Get user public information.")
     @app_commands.describe(leetcode_username="The LeetCode username")
-    async def user_statistics(
-        self, interaction: Interaction, leetcode_username: str
+    @app_commands.guild_only()
+    @app_commands.checks.cooldown(
+        USER_INFO_COMMAND_RATE,
+        USER_INFO_COMMAND_PER,
+        key=user_command_key,
+    )
+    async def user_info(
+        self, interaction: Interaction, leetcode_username: str | None
     ) -> None:
         await interaction.response.defer(thinking=True, ephemeral=False)
         try:
+            link = None
+            if leetcode_username is None:
+                link = await self.bot.leetcode_discord_link_manager.get_link_with_discord_user_id(
+                    discord_user_id=interaction.user.id
+                )
+                leetcode_username = link.leetcode_user_name
+
+            logger.debug(link)
+
             info = await self.leetcode_api.user_info(username=leetcode_username)
             logger.debug(info)
+
             embed = get_user_info_embed(
                 username=leetcode_username, info=info, bot=self.bot
             )
             await interaction.followup.send(embed=embed)
+        except NotLinkedError:
+            await interaction.followup.send(
+                "You haven't linked your discord to leetcode account yet! Link with /link and follow the instructions!",
+                ephemeral=True,
+            )
+        except LeetCodeUserNameNotFound as e:
+            await interaction.followup.send(e.message, ephemeral=True)
         except Exception as e:
             logger.error(
                 "Something went wrong when fetching user statistics.", exc_info=e
@@ -461,13 +552,27 @@ class LeetCode(commands.Cog):
         leetcode_username="The LeetCode user name.",
         limit="How many submissions you want. 1 <= limit <= 20",
     )
+    @app_commands.checks.cooldown(
+        USER_INFO_COMMAND_RATE,
+        USER_INFO_COMMAND_PER,
+        key=user_command_key,
+    )
     @app_commands.guild_only()
     async def recent_submissions(
-        self, interaction: Interaction, leetcode_username: str, limit: int = 20
+        self, interaction: Interaction, leetcode_username: str | None, limit: int = 20
     ) -> None:
         await interaction.response.defer(thinking=True)
 
         try:
+            link = None
+            if leetcode_username is None:
+                link = await self.bot.leetcode_discord_link_manager.get_link_with_discord_user_id(
+                    discord_user_id=interaction.user.id
+                )
+                leetcode_username = link.leetcode_user_name
+
+            logger.debug(link)
+
             submissions_list = await self.leetcode_api.user_submission(
                 username=leetcode_username, limit=limit
             )
@@ -503,6 +608,8 @@ class LeetCode(commands.Cog):
             )
 
             await view.send_initial_message(interaction=interaction, followup=True)
+        except LeetCodeUserNameNotFound as e:
+            await interaction.response.send_message(e.message, ephemeral=True)
         except Exception as e:
             logger.error(
                 "Something went wrong when fetching user's recent submissions.",

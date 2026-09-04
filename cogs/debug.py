@@ -4,6 +4,10 @@ from typing import TYPE_CHECKING
 from discord import Interaction, app_commands
 from discord.ext import commands
 
+from utils.custom_exceptions import (
+    LeetCodeUserNameNotFound,
+)
+
 if TYPE_CHECKING:
     from main import LeetCodeBot
 from utils.checks import is_me_app_command
@@ -41,6 +45,24 @@ class Debug(commands.Cog):
             "Printing problems cache to console...", ephemeral=True
         )
         logger.debug("Problems Cache:")
+
+    @debug.command(name="test-link", description="Test link")
+    @is_me_app_command()
+    async def test_link(
+        self, interaction: Interaction, leetcode_user_name: str
+    ) -> None:
+        try:
+            await self.bot.leetcode_api.user_info(username=leetcode_user_name)
+        except LeetCodeUserNameNotFound as e:
+            await interaction.response.send_message(e.message, ephemeral=True)
+            return
+
+        await self.bot.leetcode_discord_link_manager.upsert_link(
+            discord_user_id=interaction.user.id,
+            leetcode_user_name=leetcode_user_name,
+        )
+
+        await interaction.response.send_message("Done!", ephemeral=True)
 
 
 async def setup(bot: "LeetCodeBot") -> None:
