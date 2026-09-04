@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 # db.problem_list is deliberately absent: its problem_frontend_id is annotated
 # Mapped[list[int]], which SQLAlchemy cannot map, so importing it raises. It has no
 # table in any existing database. #49 owns designing it properly.
-import db.leetcode_dc_link  # noqa: F401
+import db.leetcode_dc_link
 import db.problem
 import db.problem_threads
 import db.thread_channel  # noqa: F401
