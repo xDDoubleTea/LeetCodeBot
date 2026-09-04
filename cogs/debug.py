@@ -5,9 +5,7 @@ from discord import Interaction, app_commands
 from discord.ext import commands
 
 from utils.custom_exceptions import (
-    DuplicateLinkName,
     LeetCodeUserNameNotFound,
-    NotLinkedError,
 )
 
 if TYPE_CHECKING:
@@ -56,7 +54,7 @@ class Debug(commands.Cog):
         try:
             await self.bot.leetcode_api.user_info(username=leetcode_user_name)
         except LeetCodeUserNameNotFound as e:
-            await interaction.response.send_message(f"{e.message}", ephemeral=True)
+            await interaction.response.send_message(e.message, ephemeral=True)
             return
 
         await self.bot.leetcode_discord_link_manager.upsert_link(
