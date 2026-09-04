@@ -1,7 +1,9 @@
+import datetime
 import logging
 from dataclasses import dataclass
+from datetime import time
 from enum import Enum, IntEnum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, override
 
 import discord
 
@@ -38,6 +40,13 @@ class ProblemDifficulity(Enum):
 class ThreadCreationEnum(IntEnum):
     REOPEN = 0
     CREATE = 1
+
+
+class VerificationStatus(IntEnum):
+    FAILED = 0
+    PENDING = 1
+    EXPIRED = 2
+    COMPLETE = 3
 
 
 @dataclass
@@ -86,3 +95,12 @@ class UserInfo:
     linkedin_url: str
     ac_submission: UserSubmissionStat
     user_profile: UserProfile
+
+
+@dataclass
+class VerificationEntry:
+    discord_user_id: int
+    leetcode_user_name: str
+    verification_token: str
+    timestamp: datetime.datetime
+    status: VerificationStatus
