@@ -14,7 +14,7 @@ from sqlalchemy.engine import Connection, Engine
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
 from alembic import command
-from config.constants import command_prefix
+from config.constants import COMMAND_PREFIX
 from config.logger import setup_logger
 from config.secrets import DATABASE_URL, bot_token, debug
 from core.leetcode_api import LeetCodeAPI
@@ -69,7 +69,7 @@ def sqlite_engine_connect(dbapi_connection, connection_record):
 class LeetCodeBot(commands.Bot):
     def __init__(self):
         super().__init__(
-            command_prefix=command_prefix,
+            command_prefix=COMMAND_PREFIX,
             intents=intents,
             tree_cls=ErrorHandlingTree,
         )
@@ -92,7 +92,7 @@ class LeetCodeBot(commands.Bot):
         self.leetcode_api: LeetCodeAPI = LeetCodeAPI(session=self.aiohttp_session)
 
         self.leetcode_discord_link_manager = LeetCodeDCLinkManager(
-            async_db_manager=self.database_manager
+            async_db_manager=self.database_manager, leetcode_api=self.leetcode_api
         )
         self.leetcode_problem_manger: LeetCodeProblemManager = LeetCodeProblemManager(
             leetcode_api=self.leetcode_api,
