@@ -1,14 +1,7 @@
 import logging
 from typing import TYPE_CHECKING, Literal
 
-from discord import (
-    DMChannel,
-    Guild,
-    Interaction,
-    Thread,
-    app_commands,
-    message,
-)
+from discord import DMChannel, Guild, Interaction, Thread, app_commands
 from discord.channel import ForumChannel, ThreadWithMessage
 from discord.ext import commands, tasks
 
