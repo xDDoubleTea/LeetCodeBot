@@ -456,6 +456,8 @@ class LeetCode(commands.Cog):
             await interaction.response.send_message(e.message, ephemeral=True)
             return
 
+        await self.bot.leetcode_discord_link_manager.clean_up_stale_verifications()
+
         tkn = await self.bot.leetcode_discord_link_manager.create_link_verification(
             interaction.user.id, leetcode_user_name
         )

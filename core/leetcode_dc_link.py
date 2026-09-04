@@ -61,6 +61,7 @@ class LeetCodeDCLinkManager:
                 entry.status == VerificationStatus.FAILED
                 or entry.status == VerificationStatus.COMPLETE
                 or entry.status == VerificationStatus.EXPIRED
+                or self._is_expired(entry)
             )
         ]
 
