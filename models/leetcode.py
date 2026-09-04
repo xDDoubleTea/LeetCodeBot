@@ -1,9 +1,8 @@
 import datetime
 import logging
 from dataclasses import dataclass
-from datetime import time
 from enum import Enum, IntEnum
-from typing import TYPE_CHECKING, override
+from typing import TYPE_CHECKING
 
 import discord
 
