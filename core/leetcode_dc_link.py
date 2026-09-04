@@ -40,9 +40,8 @@ class LeetCodeDCLinkManager:
 
     @staticmethod
     def _is_expired(verification_entry: VerificationEntry) -> bool:
-        return (
-            datetime.now(UTC) - verification_entry.timestamp
-            > VERIFY_TOKEN_EXPIRATION_PERIOD
+        return datetime.now(UTC) - verification_entry.timestamp > timedelta(
+            minutes=VERIFY_TOKEN_EXPIRATION_PERIOD
         )
 
     async def _create_leetcode_dclink_instance(

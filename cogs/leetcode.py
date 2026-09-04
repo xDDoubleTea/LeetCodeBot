@@ -12,6 +12,7 @@ from config.constants import (
     THREAD_COMMAND_RATE,
     USER_INFO_COMMAND_PER,
     USER_INFO_COMMAND_RATE,
+    VERIFY_TOKEN_EXPIRATION_PERIOD,
 )
 from models.leetcode import ProblemWithTags, ThreadCreationEnum
 from models.pagination import (
@@ -463,7 +464,7 @@ class LeetCode(commands.Cog):
             f"Your token: {tkn}.\n"
             "Append the token to your LeetCode public profile ReadMe section"
             ", and do `/link-confirm` to complete the link process.\n"
-            "Note: The token will expire in 15 minutes!",
+            f"Note: The token will expire in {VERIFY_TOKEN_EXPIRATION_PERIOD} minutes!",
             ephemeral=True,
         )
 
