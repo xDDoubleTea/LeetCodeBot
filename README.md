@@ -66,6 +66,18 @@
 | `/set_forum_channel` | Sets the forum channel for problems.   |
 | `/refresh`           | Refreshes the LeetCode problems cache. |
 
+## Link feature
+
+1. User runs `/link <leetcode_user_name>`.
+2. If the user name is not found on leetcode, it will raise an exception `LeetCodeUserNotFound` and returns.
+3. If the user does exist, it will generate a token prefixed with `LEETCODE_VERIFY_TOKEN_PREFIX` defined in `config/constants.py` and a 16 characters random string using `secrets.token_hex(8)`.
+4. The user should paste the whole token in their LeetCode ReadMe, and then come back to discord and run `/link-confirm`.
+5. The bot will then fetch the user's ReadMe (in API query it is called `about_me` for some reason) and check if the token is present as a substring of the ReadMe text.
+6. If the token is present, the bot will add the discord_user_id and leetcode_user_name to database.
+
+> [!NOTE]
+> The token has expiration period of 15 minutes by default.
+
 ## How to run this bot
 
 ### Prerequisites
