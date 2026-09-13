@@ -46,6 +46,14 @@ uv run main.py
 
 The bot applies any outstanding database migrations, then connects to Discord. Stop it with `Ctrl+C`; it shuts the gateway, the HTTP session and the database engine down in order.
 
+## Running the Bot in Docker (Preferred, as production server uses docker.)
+
+```bash
+docker compose up -d --build
+```
+
+The `logs` and `db` are mounted as volumes, so no need to go inside docker to view logs.
+
 ## The Database
 
 SQLite by default, accessed through SQLAlchemy's async engine. The schema is managed by [alembic](https://alembic.sqlalchemy.org/) and migrations run automatically at startup, so a fresh clone needs no manual setup step.

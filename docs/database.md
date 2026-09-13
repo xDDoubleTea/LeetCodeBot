@@ -12,20 +12,20 @@ revision it follows, so together they form a chain. Alembic creates an
 database is currently at. To bring a database up to date it reads that row, works out
 which revisions come after it, and runs them in order.
 
-The models under `db/` remain the source of truth for what the schema *should* be.
+The models under `db/` remain the source of truth for what the schema _should_ be.
 `alembic/env.py` points at `Base.metadata` so alembic can compare the two.
 
 ## Commands
 
 Run these from the repository root.
 
-| Command | Purpose |
-| --- | --- |
-| `uv run alembic upgrade head` | Apply outstanding migrations |
-| `uv run alembic current` | Show the revision this database is at |
-| `uv run alembic history` | List the revision chain |
+| Command                                               | Purpose                                  |
+| ----------------------------------------------------- | ---------------------------------------- |
+| `uv run alembic upgrade head`                         | Apply outstanding migrations             |
+| `uv run alembic current`                              | Show the revision this database is at    |
+| `uv run alembic history`                              | List the revision chain                  |
 | `uv run alembic revision --autogenerate -m "message"` | Write a new migration from model changes |
-| `uv run alembic downgrade -1` | Undo the most recent migration |
+| `uv run alembic downgrade -1`                         | Undo the most recent migration           |
 
 The database URL comes from `DATABASE_URL` in your `.env`, the same value the bot uses.
 
