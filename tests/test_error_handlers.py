@@ -17,7 +17,7 @@ from discord.ext.commands.errors import (
 )
 
 from utils.checks import IsNotDev, UserNotAdministrator
-from utils.custom_exceptions import ForumChannelNotFound
+from utils.custom_exceptions import ForumChannelNotFound, NotLinkedError
 from utils.error_handlers import (
     UNEXPECTED_MESSAGE,
     ErrorHandlingTree,
@@ -55,6 +55,16 @@ def test_forum_channel_not_found_names_the_command_that_fixes_it():
     message = app_command_message(ForumChannelNotFound())
     assert message is not None
     assert "/set_forum_channel" in message
+
+
+def test_an_unlinked_user_is_told_how_to_link():
+    """
+    /user-info and a future /unlink both surface this, so the reply lives in the
+    exception rather than in each cog.
+    """
+    message = app_command_message(NotLinkedError())
+    assert message is not None
+    assert "/link" in message
 
 
 def test_missing_permissions_names_the_permission():
