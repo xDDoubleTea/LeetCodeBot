@@ -24,24 +24,47 @@
 
 ## Usage
 
-| Command                                           | Description                                                              | Admin Only |
-| ------------------------------------------------- | ------------------------------------------------------------------------ | ---------- |
-| `/help`                                           | Gets help about the bot's commands.                                      | No         |
-| `/daily`                                          | Gets today's LeetCode problem.                                           | No         |
-| `/problem [id]`                                   | Gets a LeetCode problem by its ID.                                       | No         |
-| `/problem-title <title>`                          | Gets a LeetCode problem by matching its title with regex.                | No         |
-| `/problem-list <name>`                            | Creates a list of problems associated with user. Does nothing right now. | No         |
-| `/random`                                         | Gets a random LeetCode problem.                                          | No         |
-| `/recent-submissions <leetcode_username> [limit]` | Gets a user's recent submissions.                                        | No         |
-| `/filter-by-tag <tag_name>`                       | Get a list of LeetCode problem that contains the given tag               | No         |
-| `/desc [id]`                                      | Gets a LeetCode problem description by its ID.                           | No         |
-| `/migrate`                                        | Migrates from the old threads.                                           | No         |
-| `/set_forum_channel`                              | Sets the forum channel for problems.                                     | Yes        |
-| `/refresh`                                        | Refreshes the LeetCode problems cache.                                   | Yes        |
-| `/ping`                                           | Checks the bot's latency.                                                | No         |
-| `/is-leetcode-down`                               | Checks the LeetCode API status.                                          | No         |
-| `/check-available-tags`                           | Get all possible tags for a LeetCode problem.                            | No         |
-| `/statistics [username]`                          | Gets user statistics by LeetCode username.                               | No         |
+> [!NOTE]
+> Only core commands are listed, for all commands use `/help` in discord!
+
+### Problem features
+
+| Command                     | Description                                                              |
+| --------------------------- | ------------------------------------------------------------------------ |
+| `/help`                     | Gets help about the bot's commands.                                      |
+| `/daily`                    | Gets today's LeetCode problem.                                           |
+| `/problem [id]`             | Gets a LeetCode problem by its ID.                                       |
+| `/problem-title <title>`    | Gets a LeetCode problem by matching its title with regex.                |
+| `/problem-list <name>`      | Creates a list of problems associated with user. Does nothing right now. |
+| `/random`                   | Gets a random LeetCode problem.                                          |
+| `/filter-by-tag <tag_name>` | Get a list of LeetCode problem that contains the given tag               |
+| `/desc [id]`                | Gets a LeetCode problem description by its ID.                           |
+| `/check-available-tags`     | Get all possible tags for a LeetCode problem.                            |
+
+### LeetCode integration
+
+| Command                                           | Description                                              |
+| ------------------------------------------------- | -------------------------------------------------------- |
+| `/recent-submissions [leetcode_username] [limit]` | Gets a user's recent submissions.                        |
+| `/statistics [username]`                          | Gets user statistics by LeetCode username.               |
+| `/is-leetcode-down`                               | Checks the LeetCode API status.                          |
+| `/link`                                           | Link your Discord user id to LeetCode username.          |
+| `/link-confirm`                                   | Confirms link.                                           |
+| `/link-status`                                    | Checks if the bot knows what your LeetCode user name is. |
+
+### Misc
+
+| Command | Description               |
+| ------- | ------------------------- |
+| `/ping` | Checks the bot's latency. |
+
+### Admin only
+
+| Command              | Description                            |
+| -------------------- | -------------------------------------- |
+| `/migrate`           | Migrates from the old threads.         |
+| `/set_forum_channel` | Sets the forum channel for problems.   |
+| `/refresh`           | Refreshes the LeetCode problems cache. |
 
 ## How to run this bot
 
