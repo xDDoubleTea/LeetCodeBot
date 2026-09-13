@@ -2,7 +2,11 @@ import datetime
 
 import discord
 
-command_prefix = ">"
+COMMAND_PREFIX = ">"
+LEETCODE_VERIFY_TOKEN_PREFIX = "leetcodebot-verify"
+
+# In minutes
+VERIFY_TOKEN_EXPIRATION_PERIOD = 15
 
 tz = datetime.timezone(datetime.timedelta(hours=8))
 LEETCODE_API_REFRESH_TIME = datetime.time(hour=8, minute=5, tzinfo=tz)
@@ -26,8 +30,14 @@ MIGRATE_SCAN_PER = 300.0
 THREAD_COMMAND_RATE = 3
 THREAD_COMMAND_PER = 30.0
 
+# Should be applied to commands that calls LeetCode API
+USER_INFO_COMMAND_RATE = 3
+USER_INFO_COMMAND_PER = 60.0
+
 # Replace with your Discord user ID.
+# This is used for development only, the actual features should not depend on this!
 DEV_ID = 398444155132575756
+
 
 THEME_COLOR = discord.Color.green()
 
@@ -35,7 +45,7 @@ LOG_DIR = "logs"
 BOT_LOG_FILE_NAME = "bot.log"
 SQLALCHEMY_LOG_FILE_NAME = "sqlalchemy.log"
 
-bot_name = "LeetCodeBot"
+BOT_NAME = "LeetCodeBot"
 
-version = "0.6.7"
-default_footer = f"LeetCodeBot version:{version}"
+VERSION = "0.6.7"
+DEFAULT_FOOTER = f"LeetCodeBot version:{VERSION}"

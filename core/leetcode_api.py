@@ -15,16 +15,9 @@ from models.leetcode import (
     UserSubmission,
     UserSubmissionStat,
 )
+from utils.custom_exceptions import FetchError, LeetCodeUserNameNotFound, QueryNotFound
 
 logger = logging.getLogger(__name__)
-
-
-class FetchError(Exception):
-    pass
-
-
-class QueryNotFound(Exception):
-    pass
 
 
 class LeetCodeAPI:
@@ -218,11 +211,17 @@ class LeetCodeAPI:
         self, response: aiohttp.ClientResponse, error_message: str
     ) -> dict:
         if response.status == 200:
-            logger.debug("Response validated successfully")
-            return await response.json()
+            logger.debug("Response status code: 200")
+            response_json = await response.json()
+            logger.debug(response_json)
+            if response_json.get("errors", None) is not None:
+                raise FetchError(error_response=response_json)
+            return response_json
         else:
             logger.error("%s: Received status code %s", error_message, response.status)
-            raise FetchError(f"{error_message}: {response.status}")
+            raise FetchError(
+                error_response=None, message=f"{error_message}: {response.status}"
+            )
 
     async def fetch_all_problems(
         self,
@@ -241,6 +240,7 @@ class LeetCodeAPI:
         total_questions = -1
         temp_questions: dict[int, dict] = {}
 
+        response_json = None
         while True:
             try:
                 variables = {
@@ -254,10 +254,10 @@ class LeetCodeAPI:
                     url=self._leetcode_graphql_url,
                     json={"query": query, "variables": variables},
                 )
-                validated_response_json = await self._validate_response(
+                response_json = await self._validate_response(
                     response, "Failed to fetch all problems"
                 )
-                res_list = validated_response_json["data"]["problemsetQuestionList"]
+                res_list = response_json["data"]["problemsetQuestionList"]
                 questions_batch = res_list["questions"]
                 total_questions = res_list["total"]
 
@@ -279,7 +279,7 @@ class LeetCodeAPI:
                 await asyncio.sleep(self.delay)
             except Exception as e:
                 logger.error(f"Error at skip {skip}", exc_info=e)
-                raise FetchError(e) from e
+                raise FetchError(error_response=response_json) from e
 
         logger.info("Fetched all problems successfully")
         return await self._parse_all_problem_dict(temp_questions)
@@ -326,11 +326,22 @@ class LeetCodeAPI:
             url=self._leetcode_graphql_url,
             json={"query": query, "variables": {"username": username}},
         )
+        try:
+            validated_response_json = await self._validate_response(
+                response,
+                f"Failed to fetch user info with username {username}",
+            )
+        except FetchError as e:
+            logger.debug(e.error_response)
+            if e.error_response and "That user does not exist" in e.error_response[
+                "errors"
+            ][0].get("message"):
+                raise LeetCodeUserNameNotFound from e
+            else:
+                raise FetchError(error_response=None) from e
+
         logger.info(f"Fetched user info for username {username} successfully")
-        validated_response_json = await self._validate_response(
-            response,
-            f"Failed to fetch user info with username {username}",
-        )
+        logger.debug(validated_response_json)
         return await self._parse_user_info(
             validated_response_json["data"]["matchedUser"]
         )
@@ -354,11 +365,22 @@ class LeetCodeAPI:
             url=self._leetcode_graphql_url,
             json={"query": query, "variables": {"username": username, "limit": limit}},
         )
+
+        try:
+            validated_response_json = await self._validate_response(
+                response,
+                f"Failed to fetch user info with username {username}",
+            )
+        except FetchError as e:
+            logger.debug(e.error_response)
+            if e.error_response and "That user does not exist" in e.error_response[
+                "errors"
+            ][0].get("message"):
+                raise LeetCodeUserNameNotFound from e
+            else:
+                raise FetchError(error_response=None) from e
+
         logger.info(f"Fetched user submissions for username {username} successfully")
-        validated_response_json = await self._validate_response(
-            response,
-            f"Failed to fetch user submissions with username {username}",
-        )
         logger.debug(f"user submission {validated_response_json}")
 
         return await self._parse_recent_submission_list(

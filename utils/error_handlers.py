@@ -22,7 +22,12 @@ from discord.ext.commands.errors import (
 from discord.ui import Item
 
 from utils.checks import IsNotDev, UserNotAdministrator
-from utils.custom_exceptions import ForumChannelNotFound
+from utils.custom_exceptions import (
+    DuplicateLinkName,
+    ForumChannelNotFound,
+    LeetCodeUserNameNotFound,
+    NotLinkedError,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +39,17 @@ def app_command_message(error: Exception) -> str | None:
     The reply for an error a user can do something about, or None when the error
     is a bug and should be logged instead.
     """
-    if isinstance(error, (UserNotAdministrator, IsNotDev, ForumChannelNotFound)):
+    if isinstance(
+        error,
+        (
+            UserNotAdministrator,
+            IsNotDev,
+            ForumChannelNotFound,
+            DuplicateLinkName,
+            LeetCodeUserNameNotFound,
+            NotLinkedError,
+        ),
+    ):
         return error.message
 
     if isinstance(error, app_commands.CommandOnCooldown):
@@ -65,6 +80,7 @@ class ErrorHandlingTree(app_commands.CommandTree):
     """A command tree that replies to the user instead of failing silently."""
 
     async def on_error(self, interaction: Interaction, error: AppCommandError) -> None:
+        logger.debug(f"Error raised: {type(error)}")
         command = interaction.command.qualified_name if interaction.command else "?"
 
         message = app_command_message(error)

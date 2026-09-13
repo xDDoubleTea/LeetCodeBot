@@ -4,7 +4,7 @@ import logging
 
 from discord import Client, Embed
 
-from config.constants import DEV_ID, THEME_COLOR, default_footer
+from config.constants import DEFAULT_FOOTER, DEV_ID, THEME_COLOR
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +33,6 @@ def add_std_footer(embed: Embed, client: Client):
         name=f"{client.user.display_name}", icon_url=client.user.avatar.url
     )
     embed.set_footer(
-        text=f"{default_footer}\nDeveloped by {dev.name}.\n",
+        text=f"{DEFAULT_FOOTER}\nDeveloped by {dev.name}.\n",
         icon_url=dev.avatar.url,
     )

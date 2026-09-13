@@ -8,6 +8,7 @@ from sqlalchemy.pool import StaticPool
 
 # Importing the model modules registers their tables on Base.metadata, which
 # create_all below needs.
+import db.leetcode_dc_link
 import db.problem
 import db.problem_threads
 import db.thread_channel  # noqa: F401

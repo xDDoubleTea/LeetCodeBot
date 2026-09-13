@@ -120,7 +120,7 @@ def get_user_info_embed(
     assert profile
     embed.set_thumbnail(url=profile.user_avatar)
     embed.add_field(name="Country", value=profile.country_name, inline=True)
-    embed.description = f"User's About me: {profile.about_me}"
+    embed.description = f"User's ReadMe: {profile.about_me}"
 
     company = profile.company
     job_title = profile.job_title
