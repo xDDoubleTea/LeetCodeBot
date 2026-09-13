@@ -469,6 +469,21 @@ class LeetCode(commands.Cog):
             ephemeral=True,
         )
 
+    @app_commands.command(
+        name="link-status",
+        description="Check if the bot knows what your leetcode user name is.",
+    )
+    async def link_status(self, interaction: Interaction) -> None:
+        await interaction.response.defer(thinking=True, ephemeral=True)
+        link = (
+            await self.bot.leetcode_discord_link_manager.get_link_with_discord_user_id(
+                interaction.user.id
+            )
+        )
+        await interaction.followup.send(
+            f"You are linked to {link.leetcode_user_name}", ephemeral=True
+        )
+
     @app_commands.command(name="link-confirm", description="Confirm link")
     @app_commands.checks.cooldown(
         USER_INFO_COMMAND_RATE,
