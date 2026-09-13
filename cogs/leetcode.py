@@ -462,7 +462,7 @@ class LeetCode(commands.Cog):
         )
         await interaction.response.send_message(
             "A special token associated with your discord account was generated!\n"
-            f"Your token: {tkn}.\n"
+            f"Your token: {tkn}\n"
             "Append the token to your LeetCode public profile ReadMe section"
             ", and do `/link-confirm` to complete the link process.\n"
             f"Note: The token will expire in {VERIFY_TOKEN_EXPIRATION_PERIOD} minutes!",
