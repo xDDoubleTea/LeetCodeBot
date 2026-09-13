@@ -29,12 +29,7 @@ intents = discord.Intents.all()
 
 
 def _upgrade_to_head(connection: Connection) -> None:
-    # alembic.ini is resolved from this file rather than the working directory: the
-    # container runs from /app, but a local `uv run main.py` should not depend on
-    # where it was launched from.
     cfg = Config(str(Path(__file__).parent / "alembic.ini"))
-    # Hand env.py the connection we already hold, so it does not open a second one
-    # against the same SQLite file.
     cfg.attributes["connection"] = connection
     command.upgrade(cfg, "head")
 
@@ -46,7 +41,7 @@ async def run_migrations(engine: AsyncEngine) -> None:
     and so could not apply any change to a database that already existed.
     """
     logger.info("Applying database migrations...")
-    async with engine.connect() as conn:  # connect(), not begin() -- no transaction yet
+    async with engine.connect() as conn:
         await conn.exec_driver_sql("PRAGMA foreign_keys=OFF")
         await conn.commit()
         await conn.run_sync(_upgrade_to_head)
@@ -125,10 +120,6 @@ class LeetCodeBot(commands.Bot):
         await handle_command_error(ctx, error)
 
     async def close(self) -> None:
-        # engine.dispose() has to run on every path out of here. aiosqlite's
-        # connection worker is a non-daemon thread, so an undisposed engine
-        # outlives asyncio.run() and blocks the interpreter in
-        # threading._shutdown() forever.
         try:
             await super().close()
         finally:
@@ -140,11 +131,8 @@ class LeetCodeBot(commands.Bot):
                 await self.engine.dispose()
 
     async def on_ready(self):
-        # No tree sync here. on_ready fires again on every reconnect, and syncing
-        # a guild copy of every global command is what put two of each in the
-        # picker: Discord lists guild-scoped and global commands side by side
-        # rather than letting one shadow the other. Publishing the tree is a
-        # deliberate act now -- see >sync_app_commands.
+        synced = await self.tree.sync()
+        logger.debug(f"Synced {len(synced)} app commands globally.")
         logger.info("Logged in as %s!", self.user)
         await self.change_presence(
             status=discord.Status.online,
@@ -172,10 +160,6 @@ async def main():
             return
         stopping = True
         logger.info(f"Received exit signal {sig.name}...")
-        # Only this task is cancelled: bot.close() tears the gateway, the HTTP
-        # session and the engine down in order, and cancelling every task would
-        # interrupt that teardown half-way. The guard above keeps a second
-        # Ctrl+C from cancelling us again mid-shutdown.
         main_task.cancel()
 
     loop = asyncio.get_running_loop()
@@ -183,8 +167,6 @@ async def main():
         loop.add_signal_handler(sig, request_stop, sig)
 
     try:
-        # Entering the bot's context means close() runs on every exit path,
-        # including a failed migration.
         async with bot:
             await run_migrations(bot.engine)
 
