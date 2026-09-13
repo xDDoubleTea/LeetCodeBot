@@ -144,6 +144,8 @@ class LeetCodeDCLinkManager:
         if link is None:
             raise NotLinkedError
         logger.debug(f"Link found for discord_user_id: {discord_user_id}")
+        self.dc_to_lc_cache[link.discord_user_id] = link
+        self.lc_to_dc_cache[link.leetcode_user_name] = link
         return link
 
     async def get_link_with_leetcode_user_name(
@@ -160,6 +162,8 @@ class LeetCodeDCLinkManager:
         if link is None:
             raise NotLinkedError
         logger.debug(f"Link found for leetcode_user_name: {leetcode_user_name}")
+        self.dc_to_lc_cache[link.discord_user_id] = link
+        self.lc_to_dc_cache[link.leetcode_user_name] = link
         return link
 
     async def create_link_verification(

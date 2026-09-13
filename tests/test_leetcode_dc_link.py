@@ -2,7 +2,7 @@ from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock
 
 import pytest
-from sqlalchemy import select
+from sqlalchemy import delete, select
 
 from config.constants import (
     LEETCODE_VERIFY_TOKEN_PREFIX,
@@ -83,6 +83,12 @@ def manager(database_manager, mock_api):
     return LeetCodeDCLinkManager(
         async_db_manager=database_manager, leetcode_api=mock_api
     )
+
+
+async def drop_every_row(database_manager) -> None:
+    """Leave the caches as they are, so a later hit can only come from them."""
+    async with database_manager as db:
+        await db.execute(delete(LeetCodeDCLink))
 
 
 async def rows(database_manager) -> list[LeetCodeDCLink]:
@@ -259,9 +265,45 @@ class TestGetLinkWithDiscordUserId:
 
         assert link.leetcode_user_name == LEETCODE_NAME
 
+    async def test_a_database_hit_warms_both_caches(self, manager, database_manager):
+        async with database_manager as db:
+            db.add(
+                LeetCodeDCLink(
+                    discord_user_id=DISCORD_ID, leetcode_user_name=LEETCODE_NAME
+                )
+            )
+
+        await manager.get_link_with_discord_user_id(DISCORD_ID)
+
+        assert manager.dc_to_lc_cache[DISCORD_ID].leetcode_user_name == LEETCODE_NAME
+        assert manager.lc_to_dc_cache[LEETCODE_NAME].discord_user_id == DISCORD_ID
+
+    async def test_a_second_lookup_is_served_from_the_cache(
+        self, manager, database_manager
+    ):
+        async with database_manager as db:
+            db.add(
+                LeetCodeDCLink(
+                    discord_user_id=DISCORD_ID, leetcode_user_name=LEETCODE_NAME
+                )
+            )
+        await manager.get_link_with_discord_user_id(DISCORD_ID)
+        await drop_every_row(database_manager)
+
+        link = await manager.get_link_with_discord_user_id(DISCORD_ID)
+
+        assert link.leetcode_user_name == LEETCODE_NAME
+
     async def test_unknown_user_raises_not_linked(self, manager):
         with pytest.raises(NotLinkedError):
             await manager.get_link_with_discord_user_id(DISCORD_ID)
+
+    async def test_a_miss_leaves_the_caches_empty(self, manager):
+        with pytest.raises(NotLinkedError):
+            await manager.get_link_with_discord_user_id(DISCORD_ID)
+
+        assert manager.dc_to_lc_cache == {}
+        assert manager.lc_to_dc_cache == {}
 
 
 class TestGetLinkWithLeetCodeUserName:
@@ -287,9 +329,43 @@ class TestGetLinkWithLeetCodeUserName:
 
         assert link.discord_user_id == DISCORD_ID
 
+    async def test_a_database_hit_warms_both_caches(self, manager, database_manager):
+        async with database_manager as db:
+            db.add(
+                LeetCodeDCLink(
+                    discord_user_id=DISCORD_ID, leetcode_user_name=LEETCODE_NAME
+                )
+            )
+
+        await manager.get_link_with_leetcode_user_name(LEETCODE_NAME)
+
+        assert manager.dc_to_lc_cache[DISCORD_ID].leetcode_user_name == LEETCODE_NAME
+        assert manager.lc_to_dc_cache[LEETCODE_NAME].discord_user_id == DISCORD_ID
+
+    async def test_the_other_direction_is_warmed_too(self, manager, database_manager):
+        async with database_manager as db:
+            db.add(
+                LeetCodeDCLink(
+                    discord_user_id=DISCORD_ID, leetcode_user_name=LEETCODE_NAME
+                )
+            )
+        await manager.get_link_with_leetcode_user_name(LEETCODE_NAME)
+        await drop_every_row(database_manager)
+
+        link = await manager.get_link_with_discord_user_id(DISCORD_ID)
+
+        assert link.leetcode_user_name == LEETCODE_NAME
+
     async def test_unknown_name_raises_not_linked(self, manager):
         with pytest.raises(NotLinkedError):
             await manager.get_link_with_leetcode_user_name("nobody")
+
+    async def test_a_miss_leaves_the_caches_empty(self, manager):
+        with pytest.raises(NotLinkedError):
+            await manager.get_link_with_leetcode_user_name("nobody")
+
+        assert manager.dc_to_lc_cache == {}
+        assert manager.lc_to_dc_cache == {}
 
 
 class TestDeleteLink:
