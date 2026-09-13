@@ -131,8 +131,6 @@ class LeetCodeBot(commands.Bot):
                 await self.engine.dispose()
 
     async def on_ready(self):
-        synced = await self.tree.sync()
-        logger.debug(f"Synced {len(synced)} app commands globally.")
         logger.info("Logged in as %s!", self.user)
         await self.change_presence(
             status=discord.Status.online,
