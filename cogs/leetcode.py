@@ -25,7 +25,6 @@ from utils.build_page_option import build_problem_options
 from utils.cooldowns import thread_command_key, user_command_key
 from utils.custom_exceptions import (
     LeetCodeUserNameNotFound,
-    NotLinkedError,
     VerificationAlreadyFailed,
     VerificationTokenAlreadyCompleted,
     VerificationTokenExpired,
@@ -529,11 +528,6 @@ class LeetCode(commands.Cog):
                 username=leetcode_username, info=info, bot=self.bot
             )
             await interaction.followup.send(embed=embed)
-        except NotLinkedError:
-            await interaction.followup.send(
-                "You haven't linked your discord to leetcode account yet! Link with /link and follow the instructions!",
-                ephemeral=True,
-            )
         except LeetCodeUserNameNotFound as e:
             await interaction.followup.send(e.message, ephemeral=True)
         except Exception as e:

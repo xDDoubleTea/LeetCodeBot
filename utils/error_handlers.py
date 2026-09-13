@@ -26,6 +26,7 @@ from utils.custom_exceptions import (
     DuplicateLinkName,
     ForumChannelNotFound,
     LeetCodeUserNameNotFound,
+    NotLinkedError,
 )
 
 logger = logging.getLogger(__name__)
@@ -46,6 +47,7 @@ def app_command_message(error: Exception) -> str | None:
             ForumChannelNotFound,
             DuplicateLinkName,
             LeetCodeUserNameNotFound,
+            NotLinkedError,
         ),
     ):
         return error.message

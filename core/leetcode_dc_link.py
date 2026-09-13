@@ -102,25 +102,32 @@ class LeetCodeDCLinkManager:
                 await db.execute(insert_stmt)
         except IntegrityError as e:
             raise DuplicateLinkName from e
-        except Exception:
-            raise
+
+        previous = self.dc_to_lc_cache.get(discord_user_id)
+        if previous is not None:
+            self.lc_to_dc_cache.pop(previous.leetcode_user_name, None)
 
         self.dc_to_lc_cache[discord_user_id] = instance
+        self.lc_to_dc_cache[leetcode_user_name] = instance
         return instance
 
     async def delete_link(self, discord_user_id: int) -> None:
-        try:
-            link = await self.get_link_with_discord_user_id(discord_user_id)
-            async with self.async_db_manager as db:
-                logger.debug(f"Deleting link for discord_user_id: {discord_user_id}")
-                await db.delete(link)
-                await db.commit()
-        except NotLinkedError as e:
-            raise NotLinkedError from e
-        except Exception:
-            raise
+        """
+        # Raises:
+        - NotLinkedError
+        """
+        link = await self.get_link_with_discord_user_id(discord_user_id)
+        async with self.async_db_manager as db:
+            logger.debug(
+                f"Deleting link for discord_user_id: {discord_user_id} from database"
+            )
+            await db.delete(link)
+            await db.commit()
 
-        self.dc_to_lc_cache.pop(discord_user_id)
+        instance = self.dc_to_lc_cache.pop(discord_user_id, None)
+        if instance is None:
+            return
+        self.lc_to_dc_cache.pop(instance.leetcode_user_name, None)
 
     async def get_link_with_discord_user_id(
         self, discord_user_id: int
@@ -133,11 +140,11 @@ class LeetCodeDCLinkManager:
             stmt = select(LeetCodeDCLink).where(
                 LeetCodeDCLink.discord_user_id == discord_user_id
             )
-            link = (await db.execute(stmt)).scalars().all()
+            link = (await db.execute(stmt)).scalars().first()
         if link is None:
             raise NotLinkedError
         logger.debug(f"Link found for discord_user_id: {discord_user_id}")
-        return link[0]
+        return link
 
     async def get_link_with_leetcode_user_name(
         self, leetcode_user_name: str
@@ -149,11 +156,11 @@ class LeetCodeDCLinkManager:
             stmt = select(LeetCodeDCLink).where(
                 LeetCodeDCLink.leetcode_user_name == leetcode_user_name
             )
-            link = (await db.execute(stmt)).scalars().all()
+            link = (await db.execute(stmt)).scalars().first()
         if link is None:
             raise NotLinkedError
         logger.debug(f"Link found for leetcode_user_name: {leetcode_user_name}")
-        return link[0]
+        return link
 
     async def create_link_verification(
         self, discord_user_id: int, leetcode_user_name: str

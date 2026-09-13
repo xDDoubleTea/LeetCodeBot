@@ -71,10 +71,20 @@ class DuplicateLinkName(ValueError):
         super().__init__(message)
 
 
-class NotLinkedError(Exception):
+class NotLinkedError(AppCommandError):
     """
     Raised when a user has not linked their leetcode user name to their discord account.
     """
+
+    def __init__(
+        self,
+        message: str = (
+            "You haven't linked your discord to leetcode account yet! "
+            "Link with /link and follow the instructions!"
+        ),
+    ):
+        self.message = message
+        super().__init__(message)
 
 
 class LeetCodeUserNameNotFound(Exception):
