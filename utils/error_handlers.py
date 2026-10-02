@@ -28,6 +28,7 @@ from utils.custom_exceptions import (
     LeetCodeUserNameNotFound,
     NotLinkedError,
 )
+from utils.perf import LatencyTimingTree
 
 logger = logging.getLogger(__name__)
 
@@ -76,8 +77,12 @@ def app_command_message(error: Exception) -> str | None:
     return None
 
 
-class ErrorHandlingTree(app_commands.CommandTree):
-    """A command tree that replies to the user instead of failing silently."""
+class ErrorHandlingTree(LatencyTimingTree):
+    """A command tree that replies to the user instead of failing silently.
+
+    Inherits the latency stamping of `LatencyTimingTree`, so every interaction
+    it accepts carries the start time `on_app_command_completion` reports.
+    """
 
     async def on_error(self, interaction: Interaction, error: AppCommandError) -> None:
         logger.debug(f"Error raised: {type(error)}")
