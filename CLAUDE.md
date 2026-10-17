@@ -49,7 +49,9 @@ CI gates every PR on four jobs, all required: `Run Pytest`, `Ruff`, `Alembic`, `
 
 ## Data flow
 
-Commands read the in-memory cache, then the database. **They never call the LeetCode API on a miss** — `get_problem_with_frontend_id` raises `ProblemNotFound`. Only `refresh_cache` talks to the API, on a daily `tasks.loop` and on `/refresh`. `/daily` is the exception, since the daily problem is not addressable by id.
+Commands read the in-memory cache, then the database. On a miss in both, `get_problem_with_frontend_id` fetches that one problem with `LeetCodeAPI.fetch_problem_by_frontend_id`, stores it with `add_problem_to_db` and caches it; `ProblemNotFound` means LeetCode has no problem with that id. The full problem list comes only from `refresh_cache`, on a daily `tasks.loop` and on `/refresh`. `/daily` fetches from the API, since the daily problem is not addressable by id.
+
+`fetch_problem_by_frontend_id` loads the `fetch_all_problems` query by name. `graphql/fetch_problem_by_id.graphql` queries by slug; `scripts/bench_lookup.py` uses it.
 
 `/problem`, `/daily` and `/random` are wrapped in `handle_leetcode_interaction` (`utils/handle_leetcode_interation.py`, note the filename typo), which defers, resolves errors and creates or reuses the thread. Their bodies only return a `ProblemWithTags`.
 
