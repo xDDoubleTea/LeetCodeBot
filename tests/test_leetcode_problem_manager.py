@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from core.leetcode_api import LeetCodeAPI
-from core.leetcode_problem import LeetCodeProblemManager
+from core.leetcode_problem import LeetCodeProblemManager, ProblemNotFound
 from db.async_db_manager import AsyncDatabaseManager
 
 # The real models, not mocks: the tests instantiate them and read their
@@ -13,6 +13,7 @@ from db.problem import (
     TopicTags,
 )
 from models.leetcode import ProblemWithTags
+from utils.custom_exceptions import FetchError
 
 
 @pytest.fixture
@@ -260,3 +261,100 @@ async def test_refresh_cache_success(manager, mock_db_session):
     assert len(assoc_upsert_data) == 2
     assert {"problem_id": 100, "tag_id": 500} in assoc_upsert_data
     assert {"problem_id": 101, "tag_id": 501} in assoc_upsert_data
+
+
+@pytest.fixture
+def db_manager_with_api(mock_api, database_manager):
+    """A manager over the real in-memory database, with only the API mocked."""
+    return LeetCodeProblemManager(mock_api, database_manager)
+
+
+def make_fetched(frontend_id: int, premium: bool = False) -> ProblemWithTags:
+    problem = Problem(
+        problem_id=frontend_id + 10_000,
+        problem_frontend_id=frontend_id,
+        title=f"Problem {frontend_id}",
+        url=f"https://leetcode.com/problems/problem-{frontend_id}",
+        difficulty=0,
+        description="<p>desc</p>",
+        premium=premium,
+    )
+    return ProblemWithTags(problem, {TopicTags(tag_name="Array")})
+
+
+async def test_a_cache_hit_does_not_call_leetcode(manager):
+    manager.all_problem_cache[1] = Problem(
+        problem_frontend_id=1,
+        title="Cached",
+        problem_id=1,
+        difficulty=0,
+        url="http://example.com/cached",
+        description="desc",
+        premium=False,
+    )
+
+    await manager.get_problem_with_frontend_id(1)
+
+    manager.leetcode_api.fetch_problem_by_frontend_id.assert_not_awaited()
+
+
+async def test_a_complete_miss_is_fetched_stored_and_cached(db_manager_with_api):
+    manager = db_manager_with_api
+    manager.leetcode_api.fetch_problem_by_frontend_id.return_value = make_fetched(4085)
+
+    result = await manager.get_problem_with_frontend_id(4085)
+
+    assert result.problem.title == "Problem 4085"
+    assert {tag.tag_name for tag in result.tags} == {"Array"}
+    assert 4085 in manager.all_problem_cache
+    assert 4085 in manager.free_problem_cache
+    stored = await manager.get_problem_from_db(problem_frontend_id=4085)
+    assert stored is not None
+    assert {tag.tag_name for tag in stored.tags} == {"Array"}
+
+
+async def test_a_fetched_problem_is_not_fetched_again(db_manager_with_api):
+    manager = db_manager_with_api
+    manager.leetcode_api.fetch_problem_by_frontend_id.return_value = make_fetched(4085)
+
+    await manager.get_problem_with_frontend_id(4085)
+    await manager.get_problem_with_frontend_id(4085)
+
+    manager.leetcode_api.fetch_problem_by_frontend_id.assert_awaited_once_with(4085)
+
+
+async def test_a_fetched_premium_problem_stays_out_of_the_free_cache(
+    db_manager_with_api,
+):
+    manager = db_manager_with_api
+    manager.leetcode_api.fetch_problem_by_frontend_id.return_value = make_fetched(
+        4085, premium=True
+    )
+
+    await manager.get_problem_with_frontend_id(4085)
+
+    assert 4085 in manager.all_problem_cache
+    assert 4085 not in manager.free_problem_cache
+
+
+async def test_an_id_leetcode_does_not_know_is_not_found(db_manager_with_api):
+    manager = db_manager_with_api
+    manager.leetcode_api.fetch_problem_by_frontend_id.return_value = None
+
+    with pytest.raises(ProblemNotFound):
+        await manager.get_problem_with_frontend_id(99999)
+
+    assert 99999 not in manager.all_problem_cache
+    assert await manager.get_problem_from_db(problem_frontend_id=99999) is None
+
+
+async def test_a_fetch_error_reaches_the_caller(db_manager_with_api):
+    manager = db_manager_with_api
+    manager.leetcode_api.fetch_problem_by_frontend_id.side_effect = FetchError(
+        error_response=None
+    )
+
+    with pytest.raises(FetchError):
+        await manager.get_problem_with_frontend_id(4085)
+
+    assert 4085 not in manager.all_problem_cache

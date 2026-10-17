@@ -333,9 +333,26 @@ class LeetCodeProblemManager:
             if problem:
                 self.all_problem_cache[problem_frontend_id] = problem
                 return ProblemWithTags(problem, set(problem.tags))
-            raise ProblemNotFound(
-                f"Problem with ID {problem_frontend_id} not found in cache nor DB"
+
+            logger.info(
+                f"Problem with ID {problem_frontend_id} not found in DB. Fetching from LeetCode API."
             )
+            problem_data = await self.leetcode_api.fetch_problem_by_frontend_id(
+                problem_frontend_id
+            )
+            if problem_data is None:
+                raise ProblemNotFound(
+                    f"Problem with ID {problem_frontend_id} not found on LeetCode"
+                )
+
+            problem = await self.add_problem_to_db(
+                problem_data.problem, problem_data.tags
+            )
+            self.all_problem_cache[problem_frontend_id] = problem
+            if not problem.premium:
+                self.free_problem_cache[problem_frontend_id] = problem
+            logger.debug(f"New Problem Added: {problem}")
+            return ProblemWithTags(problem, set(problem.tags))
 
         except Exception:
             logger.error(f"Error retrieving problem with ID {problem_frontend_id}")

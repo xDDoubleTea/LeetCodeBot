@@ -24,7 +24,7 @@ This is why the individual commands are only a few lines each. `/problem-title` 
 Logic flow:
 
 1. User invokes `/problem <id>`.
-2. `LeetCodeProblemManager.get_problem_with_frontend_id` resolves it: the in-memory cache first, then the database. If it is in neither, it raises `ProblemNotFound` — the command does **not** reach out to LeetCode. See [Where Problem Data Comes From](#where-problem-data-comes-from).
+2. `LeetCodeProblemManager.get_problem_with_frontend_id` resolves it: the in-memory cache first, then the database, then LeetCode. A problem fetched from LeetCode is stored and cached, so later lookups do not fetch it again. If LeetCode has no problem with that id, it raises `ProblemNotFound`. See [Where Problem Data Comes From](#where-problem-data-comes-from).
 3. `reopen_or_create_problem_thread` looks up the guild's configured forum channel, raising `ForumChannelNotFound` if `/set_forum_channel` was never run.
 4. It checks the database for an existing thread for that problem in that guild.
 5. If one exists and is still present in Discord, it is reused. If the record exists but the thread is gone, the record is deleted and a new thread is created.
@@ -35,7 +35,8 @@ Involved files:
 
 - `cogs/leetcode.py` — `leetcode_problem`, the command definition.
 - `utils/handle_leetcode_interation.py` — `handle_leetcode_interaction`, the shared workflow above.
-- `core/leetcode_problem.py` — `get_problem_with_frontend_id`, `get_problem_from_db`.
+- `core/leetcode_problem.py` — `get_problem_with_frontend_id`, `get_problem_from_db`, `add_problem_to_db`.
+- `core/leetcode_api.py` — `fetch_problem_by_frontend_id`.
 - `core/problem_threads.py` — `reopen_or_create_problem_thread`, `get_forum_channel`, `get_thread_by_problem_id`, `_create_thread`, `create_thread_in_db`, `delete_thread_from_db`.
 - `utils/embed_presenters.py` — `get_problem_desc_embed`.
 - `utils/discord_utils.py` — `try_get_channel`.
@@ -49,7 +50,9 @@ flowchart TD
     CheckCache -- Yes --> Resolved[ProblemWithTags]
     CheckCache -- No --> CheckDB{In database?}
     CheckDB -- Yes --> Resolved
-    CheckDB -- No --> NotFound[ProblemNotFound -> error message]
+    CheckDB -- No --> FetchAPI{On LeetCode?}
+    FetchAPI -- Yes --> Store[Store in database and cache] --> Resolved
+    FetchAPI -- No --> NotFound[ProblemNotFound -> error message]
 
     Resolved --> Forum{Forum channel set?}
     Forum -- No --> NoForum[ForumChannelNotFound -> error message]
@@ -99,12 +102,14 @@ flowchart TD
 
 ### Where Problem Data Comes From
 
-The commands read from the cache and the database only. Nothing populates them on demand — that is `refresh_cache`'s job:
+`refresh_cache` loads the full problem list:
 
 - A `tasks.loop` in `cogs/leetcode.py` runs it daily at `LEETCODE_API_REFRESH_TIME` (`config/constants.py`).
 - `/refresh` runs it on request, admin only.
 
-`refresh_cache` calls `LeetCodeAPI.fetch_all_problems`, upserts the results into the database, and rebuilds the in-memory cache. So a problem added to LeetCode since the last refresh will report as not found until the next one.
+It calls `LeetCodeAPI.fetch_all_problems`, upserts the results into the database, and rebuilds the in-memory cache.
+
+A problem added to LeetCode since the last refresh is fetched on its first lookup. `LeetCodeAPI.fetch_problem_by_frontend_id` searches the problem list by the id, keeps the result whose frontend id matches exactly, and returns `None` when there is none. One lookup costs one request.
 
 ## UML charts
 

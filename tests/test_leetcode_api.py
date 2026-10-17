@@ -194,3 +194,95 @@ async def test_premium_is_read_from_the_paid_only_alias(leetcode_api, paid_only)
     result = await leetcode_api._parse_single_problem_response(response)
 
     assert result.problem.premium is paid_only
+
+
+def make_question(frontend_id: str, title: str) -> dict:
+    return {
+        "title": title,
+        "titleSlug": title.lower().replace(" ", "-"),
+        "questionId": frontend_id,
+        "questionFrontendId": frontend_id,
+        "difficulty": "Easy",
+        "content": "<p>desc</p>",
+        "paidOnly": False,
+        "topicTags": [{"name": "Array"}],
+    }
+
+
+def search_response(*questions: dict) -> MagicMock:
+    response = MagicMock()
+    response.status = 200
+    response.json = AsyncMock(
+        return_value={
+            "data": {
+                "problemsetQuestionList": {
+                    "total": len(questions),
+                    "questions": list(questions),
+                }
+            }
+        }
+    )
+    return response
+
+
+async def test_fetch_by_frontend_id_searches_by_the_id(leetcode_api):
+    leetcode_api.session.post = AsyncMock(
+        return_value=search_response(make_question("4085", "New Problem"))
+    )
+
+    await leetcode_api.fetch_problem_by_frontend_id(4085)
+
+    variables = leetcode_api.session.post.call_args.kwargs["json"]["variables"]
+    assert variables["filters"] == {"searchKeywords": "4085"}
+
+
+async def test_fetch_by_frontend_id_skips_title_matches(leetcode_api):
+    leetcode_api.session.post = AsyncMock(
+        return_value=search_response(
+            make_question("191", "Number of 1 Bits"),
+            make_question("1", "Two Sum"),
+            make_question("717", "1 bit and 2 bit Characters"),
+        )
+    )
+
+    result = await leetcode_api.fetch_problem_by_frontend_id(1)
+
+    assert result is not None
+    assert result.problem.problem_frontend_id == 1
+    assert result.problem.title == "Two Sum"
+    assert result.problem.url == "https://leetcode.com/problems/two-sum"
+    assert {tag.tag_name for tag in result.tags} == {"Array"}
+
+
+@pytest.mark.parametrize(
+    "questions",
+    [
+        pytest.param((), id="no_results"),
+        pytest.param(
+            (make_question("1999", "Problem 99999 Lookalike"),),
+            id="title_match_only",
+        ),
+    ],
+)
+async def test_fetch_by_frontend_id_returns_none_without_an_exact_match(
+    leetcode_api, questions
+):
+    leetcode_api.session.post = AsyncMock(return_value=search_response(*questions))
+
+    assert await leetcode_api.fetch_problem_by_frontend_id(99999) is None
+
+
+async def test_fetch_by_frontend_id_maps_a_network_error_to_fetch_error(leetcode_api):
+    leetcode_api.session.post = AsyncMock(side_effect=aiohttp.ClientConnectionError)
+
+    with pytest.raises(FetchError):
+        await leetcode_api.fetch_problem_by_frontend_id(1)
+
+
+async def test_fetch_by_frontend_id_maps_a_bad_status_to_fetch_error(leetcode_api):
+    response = MagicMock()
+    response.status = 503
+    leetcode_api.session.post = AsyncMock(return_value=response)
+
+    with pytest.raises(FetchError):
+        await leetcode_api.fetch_problem_by_frontend_id(1)

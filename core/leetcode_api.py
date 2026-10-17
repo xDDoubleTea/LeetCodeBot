@@ -284,6 +284,65 @@ class LeetCodeAPI:
         logger.info("Fetched all problems successfully")
         return await self._parse_all_problem_dict(temp_questions)
 
+    async def fetch_problem_by_frontend_id(
+        self, problem_frontend_id: int
+    ) -> ProblemWithTags | None:
+        """
+        Fetch one problem by the number shown on LeetCode.
+
+        Searches the problem list query by keyword. A numeric keyword matches
+        the frontend id exactly and also any title containing that number as a
+        word, so the result is filtered by id.
+
+        # Returns:
+        - The problem, or `None` when LeetCode has no problem with that id.
+
+        # Raises:
+        - FetchError
+        - QueryNotFound
+        """
+        logger.info(f"Fetching problem with frontend ID {problem_frontend_id}")
+        query = self.queries.get("fetch_all_problems", "")
+        if not query:
+            raise QueryNotFound("Query not found: fetch_all_problems")
+
+        variables = {
+            "categorySlug": "",
+            "limit": 20,
+            "skip": 0,
+            "filters": {"searchKeywords": str(problem_frontend_id)},
+        }
+        try:
+            response = await self.session.post(
+                headers=self._leetcode_headers,
+                url=self._leetcode_graphql_url,
+                json={"query": query, "variables": variables},
+            )
+        except aiohttp.ClientError as e:
+            raise FetchError(
+                error_response=None,
+                message=f"Failed to fetch problem {problem_frontend_id}",
+            ) from e
+
+        response_json = await self._validate_response(
+            response, f"Failed to fetch problem {problem_frontend_id}"
+        )
+        questions = response_json["data"]["problemsetQuestionList"]["questions"]
+        found = next(
+            (
+                q
+                for q in questions
+                if q["questionFrontendId"] == str(problem_frontend_id)
+            ),
+            None,
+        )
+        if found is None:
+            logger.info(f"LeetCode has no problem with ID {problem_frontend_id}")
+            return None
+
+        found["url"] = f"https://leetcode.com/problems/{found['titleSlug']}"
+        return await self._parse_single_problem_response(found)
+
     async def fetch_daily(
         self,
     ) -> ProblemWithTags:
