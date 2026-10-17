@@ -159,7 +159,7 @@ class LeetCodeAPI:
                     response_json.get("difficulty", "")
                 ).db_repr,
                 description=response_json.get("content", ""),
-                premium=response_json.get("isPaidOnly", False),
+                premium=response_json.get("paidOnly", False),
             )
             logger.debug("Parsed Single Problem: %s", problem)
             problem_tags: list[dict] = response_json.get("topicTags", [])

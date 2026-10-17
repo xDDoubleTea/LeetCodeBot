@@ -177,3 +177,20 @@ async def test_user_submission_success(leetcode_api):
 
     submissions = await leetcode_api.user_submission("testuser")
     assert submissions == []
+
+
+@pytest.mark.parametrize("paid_only", [True, False])
+async def test_premium_is_read_from_the_paid_only_alias(leetcode_api, paid_only):
+    response = {
+        "title": "Two Sum BSTs",
+        "questionId": "1150",
+        "questionFrontendId": "1214",
+        "difficulty": "Medium",
+        "content": None,
+        "paidOnly": paid_only,
+        "topicTags": [],
+    }
+
+    result = await leetcode_api._parse_single_problem_response(response)
+
+    assert result.problem.premium is paid_only
