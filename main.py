@@ -23,6 +23,7 @@ from core.leetcode_problem import LeetCodeProblemManager
 from core.problem_threads import ProblemThreadsManager
 from db.async_db_manager import AsyncDatabaseManager
 from utils.error_handlers import ErrorHandlingTree, handle_command_error
+from utils.perf import log_command_latency
 
 logger = logging.getLogger(__name__)
 intents = discord.Intents.all()
@@ -113,6 +114,13 @@ class LeetCodeBot(commands.Bot):
         await self.problem_threads_manager.init_cache()
         await self.leetcode_discord_link_manager.init_cache()
         logger.info("Caches initialized.")
+
+    async def on_app_command_completion(
+        self,
+        interaction: discord.Interaction,
+        command: discord.app_commands.Command | discord.app_commands.ContextMenu,
+    ) -> None:
+        log_command_latency(interaction, command)
 
     async def on_command_error(
         self, ctx: commands.Context, error: commands.CommandError
