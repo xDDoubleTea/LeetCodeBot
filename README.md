@@ -102,6 +102,8 @@ class Solution: ...
 
 The language is the word after the backticks (`py` above), or empty when there is none. The code itself is not stored. Nothing reads these tables yet.
 
+Times are UTC, taken from Discord, and stored without a timezone. Convert them when reading, for example `select datetime(opened_at, 'localtime') from problem_opens;` in `sqlite3`.
+
 ## How to run this bot
 
 ### Prerequisites
