@@ -57,7 +57,7 @@ Copyright &copy; 2026 The authors
 #
 # Read more: https://zensical.org/docs/customization/#additional-css
 #
-#extra_css = ["stylesheets/extra.css"]
+extra_css = ["stylesheets/extra.css"]
 
 # With the `extra_javascript` option you can add your own JavaScript to your
 # project to customize the behavior according to your needs.
@@ -288,14 +288,14 @@ features = [
 # - https://zensical.org/docs/setup/colors/
 # ----------------------------------------------------------------------------
 [[project.theme.palette]]
-toggle.icon = "lucide/sun"
 scheme = "slate"
-toggle.name = "Switch to dark mode"
+toggle.icon = "lucide/moon"
+toggle.name = "Switch to light mode"
 
 [[project.theme.palette]]
 scheme = "default"
-toggle.icon = "lucide/moon"
-toggle.name = "Switch to light mode"
+toggle.icon = "lucide/sun"
+toggle.name = "Switch to dark mode"
 
 # ----------------------------------------------------------------------------
 # The "extra" section contains miscellaneous settings.
