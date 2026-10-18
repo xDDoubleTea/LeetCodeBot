@@ -4,11 +4,15 @@ Tests for LeetCodeBot.close().
 engine.dispose() has to run on every path out of close(). aiosqlite's
 connection worker is a non-daemon thread, so an engine that is never disposed
 outlives asyncio.run() and blocks the interpreter in threading._shutdown().
+
+The aiohttp session opened in setup_hook is closed too, so shutdown does not log
+"Unclosed client session".
 """
 
 import asyncio
 import importlib
 
+import aiohttp
 import pytest
 from discord import Client
 
@@ -60,3 +64,26 @@ async def test_close_disposes_the_engine_when_cancelled(leetcode_bot, monkeypatc
         await leetcode_bot.close()
 
     assert leetcode_bot.engine.pool is not pool
+
+
+async def test_close_closes_the_aiohttp_session(leetcode_bot):
+    leetcode_bot.aiohttp_session = aiohttp.ClientSession()
+
+    await leetcode_bot.close()
+
+    assert leetcode_bot.aiohttp_session.closed
+
+
+async def test_close_closes_the_aiohttp_session_when_the_gateway_teardown_raises(
+    leetcode_bot, monkeypatch
+):
+    async def boom(self) -> None:
+        raise RuntimeError("gateway teardown failed")
+
+    monkeypatch.setattr(Client, "close", boom)
+    leetcode_bot.aiohttp_session = aiohttp.ClientSession()
+
+    with pytest.raises(RuntimeError):
+        await leetcode_bot.close()
+
+    assert leetcode_bot.aiohttp_session.closed
