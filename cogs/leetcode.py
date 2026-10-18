@@ -23,6 +23,7 @@ from models.pagination import (
     UserSubmissionPageMeta,
 )
 from utils.build_page_option import build_problem_options
+from utils.checks import is_me_app_command
 from utils.code_blocks import code_block_languages
 from utils.cooldowns import thread_command_key, user_command_key
 from utils.custom_exceptions import (
@@ -345,9 +346,9 @@ class LeetCode(commands.Cog):
             return
 
     @app_commands.command(
-        name="refresh", description="<Admin> Refresh LeetCode problems cache"
+        name="refresh", description="<Dev> Refresh LeetCode problems cache"
     )
-    @app_commands.checks.has_permissions(administrator=True)
+    @is_me_app_command()
     @app_commands.guild_only()
     async def refresh_cache(self, interaction: Interaction) -> None:
         await interaction.response.defer(thinking=True)
