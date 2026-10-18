@@ -57,6 +57,15 @@ def handle_leetcode_interaction(is_daily: bool = False):
                 )
 
                 problem_obj = problem_with_tags.problem
+                await self.activity_manager.record_problem_open(
+                    discord_user_id=interaction.user.id,
+                    guild_id=interaction.guild.id,
+                    problem_db_id=problem_obj.id,
+                    command=interaction.command.qualified_name
+                    if interaction.command
+                    else func.__name__,
+                    opened_at=interaction.created_at,
+                )
 
                 if is_daily:
                     if thread_creation_enum == ThreadCreationEnum.CREATE:
