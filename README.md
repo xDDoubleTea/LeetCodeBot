@@ -78,6 +78,25 @@
 > [!NOTE]
 > The token has expiration period of 15 minutes by default.
 
+## Activity records
+
+The bot records two kinds of activity in its database, as data for a planned `/suggest` command that recommends problems ([#86](https://github.com/xDDoubleTea/LeetCodeBot/issues/86)):
+
+| Table              | One row per                                                                                                                                | Stored                                                             |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------ |
+| `problem_opens`    | problem thread opened or reopened through `/problem`, `/daily`, `/random`, or the select menu of `/filter-by-tag` and `/problem-title` | Discord user id, guild id, problem, command, time                  |
+| `thread_solutions` | message with a fenced code block posted in a problem thread                                                                                | message id, thread id, Discord user id, problem, code language, time |
+
+A code block counts when a newline follows the opening backticks, which is when Discord renders it as a block:
+
+````
+```py
+class Solution: ...
+```
+````
+
+The language is the word after the backticks (`py` above), or empty when there is none. The code itself is not stored. Nothing reads these tables yet.
+
 ## How to run this bot
 
 ### Prerequisites
