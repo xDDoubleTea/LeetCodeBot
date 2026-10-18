@@ -8,7 +8,11 @@ from db.problem import Problem
 
 
 class ProblemOpen(Base):
-    """One problem thread opened or reopened by a user through a command."""
+    """
+    One problem thread opened or reopened by a user through a command.
+
+    `opened_at` is the interaction's time in UTC, stored without a timezone.
+    """
 
     __tablename__ = "problem_opens"
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -25,7 +29,11 @@ class ProblemOpen(Base):
 
 
 class ThreadSolution(Base):
-    """One message with a fenced code block, posted in a problem thread."""
+    """
+    One message with a fenced code block, posted in a problem thread.
+
+    `posted_at` is the message's time in UTC, stored without a timezone.
+    """
 
     __tablename__ = "thread_solutions"
     id: Mapped[int] = mapped_column(primary_key=True)
