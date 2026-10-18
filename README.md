@@ -64,7 +64,12 @@
 | -------------------- | -------------------------------------- |
 | `/migrate`           | Migrates from the old threads.         |
 | `/set_forum_channel` | Sets the forum channel for problems.   |
-| `/refresh`           | Refreshes the LeetCode problems cache. |
+
+### Bot owner only
+
+| Command    | Description                            |
+| ---------- | -------------------------------------- |
+| `/refresh` | Refreshes the LeetCode problems cache. |
 
 ## Link feature
 

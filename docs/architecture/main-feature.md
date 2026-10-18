@@ -105,7 +105,7 @@ flowchart TD
 `refresh_cache` loads the full problem list:
 
 - A `tasks.loop` in `cogs/leetcode.py` runs it daily at `LEETCODE_API_REFRESH_TIME` (`config/constants.py`).
-- `/refresh` runs it on request, admin only.
+- `/refresh` runs it on request, for the bot owner (`DEV_ID`) only.
 
 It calls `LeetCodeAPI.fetch_all_problems`, upserts the results into the database, and rebuilds the in-memory cache.
 
