@@ -132,7 +132,7 @@ class LeetCodeBot(commands.Bot):
             await super().close()
         finally:
             try:
-                session = getattr(self, "session", None)
+                session = getattr(self, "aiohttp_session", None)
                 if session is not None:
                     await session.close()
             finally:
