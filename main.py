@@ -17,6 +17,7 @@ from alembic import command
 from config.constants import COMMAND_PREFIX
 from config.logger import setup_logger
 from config.secrets import DATABASE_URL, bot_token, debug
+from core.activity import ActivityManager
 from core.leetcode_api import LeetCodeAPI
 from core.leetcode_dc_link import LeetCodeDCLinkManager
 from core.leetcode_problem import LeetCodeProblemManager
@@ -77,6 +78,7 @@ class LeetCodeBot(commands.Bot):
         self.leetcode_problem_manger: LeetCodeProblemManager
         self.problem_threads_manager: ProblemThreadsManager
         self.leetcode_discord_link_manager: LeetCodeDCLinkManager
+        self.activity_manager: ActivityManager
         self.aiohttp_session: aiohttp.ClientSession
 
     async def setup_hook(self) -> None:
@@ -98,6 +100,7 @@ class LeetCodeBot(commands.Bot):
             self.database_manager,
             leetcode_problem_manager=self.leetcode_problem_manger,
         )
+        self.activity_manager = ActivityManager(self.database_manager)
 
         logger.info("Loading Graphql queries.")
         self.leetcode_api._load_graphql_queries()

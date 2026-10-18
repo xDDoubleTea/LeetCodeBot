@@ -53,6 +53,8 @@ Commands read the in-memory cache, then the database. On a miss in both, `get_pr
 
 `fetch_problem_by_frontend_id` loads the `fetch_all_problems` query by name. `graphql/fetch_problem_by_id.graphql` queries by slug; `scripts/bench_lookup.py` uses it.
 
+`ActivityManager` records problem opens and code blocks posted in problem threads (`problem_opens`, `thread_solutions`), for the `/suggest` ranking in #86. Its methods log and swallow database errors, so a failed record never fails a command.
+
 `/problem`, `/daily` and `/random` are wrapped in `handle_leetcode_interaction` (`utils/handle_leetcode_interation.py`, note the filename typo), which defers, resolves errors and creates or reuses the thread. Their bodies only return a `ProblemWithTags`.
 
 ## Migrations

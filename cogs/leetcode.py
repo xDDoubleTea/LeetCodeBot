@@ -1,7 +1,8 @@
+import functools
 import logging
 from typing import TYPE_CHECKING, Literal
 
-from discord import DMChannel, Guild, Interaction, Thread, app_commands
+from discord import DMChannel, Guild, Interaction, Message, Thread, app_commands
 from discord.channel import ForumChannel, ThreadWithMessage
 from discord.ext import commands, tasks
 
@@ -22,6 +23,7 @@ from models.pagination import (
     UserSubmissionPageMeta,
 )
 from utils.build_page_option import build_problem_options
+from utils.code_blocks import code_block_languages
 from utils.cooldowns import thread_command_key, user_command_key
 from utils.custom_exceptions import (
     LeetCodeUserNameNotFound,
@@ -60,6 +62,7 @@ class LeetCode(commands.Cog):
         self.leetcode_problem_manager = bot.leetcode_problem_manger
         self.leetcode_api = bot.leetcode_api
         self.problem_threads_manager = bot.problem_threads_manager
+        self.activity_manager = bot.activity_manager
 
     @tasks.loop(time=LEETCODE_API_REFRESH_TIME, name="daily_cache_refresh")
     async def daily_cache_refresh(self) -> None:
@@ -82,7 +85,11 @@ class LeetCode(commands.Cog):
         self.daily_cache_refresh.cancel()
 
     async def handle_problem_select(
-        self, interaction: Interaction, view: BasePaginationView, values: list[str]
+        self,
+        interaction: Interaction,
+        view: BasePaginationView,
+        values: list[str],
+        command: str,
     ):
         problem_frontend_id = int(values[0])
         problem_with_tags = (
@@ -100,6 +107,13 @@ class LeetCode(commands.Cog):
             bot=self.bot,
             is_daily=False,
         )
+        await self.activity_manager.record_problem_open(
+            discord_user_id=interaction.user.id,
+            guild_id=interaction.guild.id,
+            problem_db_id=problem_with_tags.problem.id,
+            command=command,
+            opened_at=interaction.created_at,
+        )
 
         msg = ""
         if thread_creation_enum == ThreadCreationEnum.CREATE:
@@ -114,6 +128,28 @@ class LeetCode(commands.Cog):
             )
 
         await interaction.response.send_message(msg)
+
+    @commands.Cog.listener()
+    async def on_message(self, message: Message) -> None:
+        """Record a message with a fenced code block posted in a problem thread."""
+        if message.author.bot or not isinstance(message.channel, Thread):
+            return
+        languages = code_block_languages(message.content)
+        if not languages:
+            return
+        problem_thread = await self.problem_threads_manager.get_thread_by_thread_id(
+            message.channel.id
+        )
+        if problem_thread is None:
+            return
+        await self.activity_manager.record_thread_solution(
+            message_id=message.id,
+            thread_id=message.channel.id,
+            discord_user_id=message.author.id,
+            problem_db_id=problem_thread.problem_db_id,
+            language=next((lang for lang in languages if lang), None),
+            posted_at=message.created_at,
+        )
 
     @app_commands.command(
         name="problem-title", description="Get LeetCode Problem with problem title"
@@ -160,7 +196,9 @@ class LeetCode(commands.Cog):
                 format_page=format_problem,
                 ephemeral=False,
                 select_options_builder=build_problem_options,
-                select_callback=self.handle_problem_select,
+                select_callback=functools.partial(
+                    self.handle_problem_select, command="problem-title"
+                ),
                 select_placeholder="Select a problem to open/create thread...",
             )
 
@@ -250,7 +288,9 @@ class LeetCode(commands.Cog):
             format_page=format_problem,
             ephemeral=False,
             select_options_builder=build_problem_options,
-            select_callback=self.handle_problem_select,
+            select_callback=functools.partial(
+                self.handle_problem_select, command="filter-by-tag"
+            ),
             select_placeholder="Select a problem to open/create thread...",
         )
         await view.send_initial_message(interaction=interaction, followup=True)

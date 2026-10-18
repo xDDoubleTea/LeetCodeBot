@@ -111,6 +111,15 @@ It calls `LeetCodeAPI.fetch_all_problems`, upserts the results into the database
 
 A problem added to LeetCode since the last refresh is fetched on its first lookup. `LeetCodeAPI.fetch_problem_by_frontend_id` searches the problem list by the id, keeps the result whose frontend id matches exactly, and returns `None` when there is none. One lookup costs one request.
 
+### Activity Records
+
+`ActivityManager` (`core/activity.py`) stores two tables as data for the planned `/suggest` ranking (#86):
+
+- `problem_opens`: a row each time a user opens or reopens a problem thread through `/problem`, `/daily`, `/random`, or the select menu of `/filter-by-tag` and `/problem-title`, with the command name and the interaction's timestamp.
+- `thread_solutions`: a row for each message with a fenced code block posted in a problem thread, with the fence's language and the message's timestamp. A message is recorded once, keyed by its id. The code stays in Discord.
+
+Recording is best-effort: a database error is logged and the command or message carries on.
+
 ## UML charts
 
 ![UML packages chart](../assets/packages.png)
