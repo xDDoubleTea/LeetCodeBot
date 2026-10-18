@@ -1,0 +1,4 @@
+/* The generated charts in docs/assets/ have white backgrounds; invert them in dark mode. */
+[data-md-color-scheme="slate"] img[src$=".svg"] {
+  filter: invert(0.88) hue-rotate(180deg);
+}

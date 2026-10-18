@@ -12,6 +12,7 @@ uv run pytest                           # full suite
 uv run pytest tests/test_error_handlers.py::test_a_bug_has_no_user_facing_message
 uv run ruff format . && uv run ruff check .
 uv run zensical build --clean           # build the docs site
+scripts/generate_uml.sh                 # regenerate the charts in docs/assets/ (needs graphviz)
 ```
 
 `pytest-asyncio` runs in auto mode, so async tests need no `@pytest.mark.asyncio`.
