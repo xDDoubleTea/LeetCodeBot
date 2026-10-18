@@ -134,9 +134,35 @@ Imports between `main`, the cogs, `core` and `db`.
 
 ### Classes
 
-`LeetCodeBot` and the managers in `core`.
+`LeetCodeBot` and the managers in `core`, and how they reference each other.
 
 [![UML classes chart](../assets/classes.svg)](../assets/classes.svg)
+
+Each module's classes with their attributes and methods:
+
+#### `LeetCodeBot`
+
+[![main classes chart](../assets/classes_main.svg)](../assets/classes_main.svg)
+
+#### `core/activity.py`
+
+[![activity classes chart](../assets/classes_activity.svg)](../assets/classes_activity.svg)
+
+#### `core/leetcode_api.py`
+
+[![leetcode_api classes chart](../assets/classes_leetcode_api.svg)](../assets/classes_leetcode_api.svg)
+
+#### `core/leetcode_dc_link.py`
+
+[![leetcode_dc_link classes chart](../assets/classes_leetcode_dc_link.svg)](../assets/classes_leetcode_dc_link.svg)
+
+#### `core/leetcode_problem.py`
+
+[![leetcode_problem classes chart](../assets/classes_leetcode_problem.svg)](../assets/classes_leetcode_problem.svg)
+
+#### `core/problem_threads.py`
+
+[![problem_threads classes chart](../assets/classes_problem_threads.svg)](../assets/classes_problem_threads.svg)
 
 ### Database models
 
