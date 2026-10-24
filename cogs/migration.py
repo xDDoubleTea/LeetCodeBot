@@ -57,6 +57,7 @@ class Migration(commands.Cog):
             "Regex matching thread titles; group 1 is the problem number. "
             f"Default: {DEFAULT_TITLE_PATTERN}"
         ),
+        tagged_only="Only consider threads carrying the forum's LeetCode tag. Default: False",
     )
     @app_commands.checks.has_permissions(administrator=True)
     @app_commands.guild_only()
@@ -65,6 +66,7 @@ class Migration(commands.Cog):
         interaction: discord.Interaction,
         channel: ForumChannel,
         title_pattern: str | None = None,
+        tagged_only: bool = False,
     ) -> None:
         await interaction.response.defer(ephemeral=True)
         assert interaction.guild is not None
@@ -102,6 +104,15 @@ class Migration(commands.Cog):
             )
             return
 
+        if tagged_only and not any(
+            tag.name.lower() == "leetcode" for tag in channel.available_tags
+        ):
+            await interaction.followup.send(
+                f"{channel.mention} has no LeetCode tag, so tagged_only would "
+                "record nothing. Run /migrate without it to match on titles."
+            )
+            return
+
         # Checked here rather than through app_commands.checks.cooldown, which
         # consumes a use before the command body runs: a mistyped pattern or an
         # unconfigured forum channel would then cost the same as a real scan.
@@ -113,7 +124,7 @@ class Migration(commands.Cog):
             # CommandOnCooldown is what error_handlers already words for the user.
             raise app_commands.CommandOnCooldown(bucket, retry_after)
 
-        threads = await self._collect_threads(channel)
+        threads, leetcode_tag = await self._collect_threads(channel, tagged_only)
         bucket.update_rate_limit(now)
         logger.info(
             f"Found {len(threads)} threads in channel {channel.id} to consider."
@@ -121,6 +132,7 @@ class Migration(commands.Cog):
 
         problem_threads: dict[int, ProblemThreads] = dict()
         skipped_titles: list[str] = []
+        untagged_recorded = 0
         for thread in threads:
             problem_frontend_id = problem_id_from_title(thread.name, title_regex)
             if problem_frontend_id is None:
@@ -132,6 +144,8 @@ class Migration(commands.Cog):
             )
             if instance:
                 problem_threads[thread.id] = instance
+                if leetcode_tag is not None and leetcode_tag not in thread.applied_tags:
+                    untagged_recorded += 1
 
         if problem_threads:
             await self.bot.problem_threads_manager.bulk_upsert_thread_to_db(
@@ -140,6 +154,11 @@ class Migration(commands.Cog):
 
         # Thread names are never touched; this only records what is already there.
         summary = f"Recorded {len(problem_threads)} of {len(threads)} threads."
+        if untagged_recorded:
+            summary += (
+                f"\n{untagged_recorded} of them have no LeetCode tag; "
+                "use tagged_only to skip threads like these."
+            )
         if skipped_titles:
             preview = ", ".join(f"`{title}`" for title in skipped_titles[:5])
             summary += (
@@ -148,14 +167,17 @@ class Migration(commands.Cog):
             )
         await interaction.followup.send(summary)
 
-    async def _collect_threads(self, channel: ForumChannel) -> list[discord.Thread]:
+    async def _collect_threads(
+        self, channel: ForumChannel, tagged_only: bool
+    ) -> tuple[list[discord.Thread], discord.ForumTag | None]:
         """
-        Every thread in the forum, active and archived.
+        Every thread in the forum, active and archived, and the forum's LeetCode
+        tag if it has one.
 
-        Threads carrying a "LeetCode" tag are preferred when that tag exists,
-        since a shared forum may hold unrelated posts. Where it does not exist --
-        a forum this bot has never posted in, which is the case migration is for
-        -- the title pattern is the only filter.
+        The title pattern is the filter. Threads opened by hand usually carry no
+        tag, so requiring it would leave them unrecorded and the bot would open
+        duplicates. With tagged_only, threads without the LeetCode tag are
+        dropped, for a forum shared with unrelated posts whose titles still match.
         """
         leetcode_tag = next(
             (tag for tag in channel.available_tags if tag.name.lower() == "leetcode"),
@@ -166,18 +188,19 @@ class Migration(commands.Cog):
         async for thread in channel.archived_threads(limit=None):
             threads.append(thread)
 
+        if not tagged_only:
+            return threads, leetcode_tag
+
         if leetcode_tag is None:
-            logger.info(
-                f"Channel {channel.id} has no LeetCode tag; matching on the title only."
-            )
-            return threads
+            logger.info(f"Channel {channel.id} has no LeetCode tag; nothing to keep.")
+            return [], None
 
         tagged = [thread for thread in threads if leetcode_tag in thread.applied_tags]
         logger.info(
-            f"Channel {channel.id} has a LeetCode tag; {len(tagged)} of "
-            f"{len(threads)} threads carry it."
+            f"Channel {channel.id}: {len(tagged)} of {len(threads)} threads carry "
+            "the LeetCode tag."
         )
-        return tagged
+        return tagged, leetcode_tag
 
 
 async def setup(bot: "LeetCodeBot") -> None:
