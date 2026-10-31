@@ -24,7 +24,7 @@ from core.leetcode_problem import LeetCodeProblemManager
 from core.problem_threads import ProblemThreadsManager
 from db.async_db_manager import AsyncDatabaseManager
 from utils.error_handlers import ErrorHandlingTree, handle_command_error
-from utils.perf import log_command_latency
+from utils.perf import http_trace_config, instrument_engine, log_command_latency
 
 logger = logging.getLogger(__name__)
 intents = discord.Intents.all()
@@ -69,10 +69,12 @@ class LeetCodeBot(commands.Bot):
             command_prefix=COMMAND_PREFIX,
             intents=intents,
             tree_cls=ErrorHandlingTree,
+            http_trace=http_trace_config(),
         )
         self.engine = create_async_engine(
             DATABASE_URL, echo=debug, hide_parameters=True
         )
+        instrument_engine(self.engine)
         self.database_manager: AsyncDatabaseManager
         self.leetcode_api: LeetCodeAPI
         self.leetcode_problem_manger: LeetCodeProblemManager
@@ -86,7 +88,9 @@ class LeetCodeBot(commands.Bot):
             self, self.engine
         )
 
-        self.aiohttp_session = aiohttp.ClientSession()
+        self.aiohttp_session = aiohttp.ClientSession(
+            trace_configs=[http_trace_config()]
+        )
         self.leetcode_api: LeetCodeAPI = LeetCodeAPI(session=self.aiohttp_session)
 
         self.leetcode_discord_link_manager = LeetCodeDCLinkManager(
