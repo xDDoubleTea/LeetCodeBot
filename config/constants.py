@@ -47,6 +47,9 @@ SQLALCHEMY_LOG_FILE_NAME = "sqlalchemy.log"
 PERF_LOG_FILE_NAME = "perf.log"
 PERF_LOGGER_NAME = "utils.perf"
 
+DISCORD_DOMAINS = ("discord.com", "discordapp.com", "discordapp.net", "discord.gg")
+LEETCODE_DOMAINS = ("leetcode.com",)
+
 BOT_NAME = "LeetCodeBot"
 
 VERSION = "0.6.7"

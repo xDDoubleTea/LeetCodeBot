@@ -34,7 +34,7 @@ from discord.utils import utcnow
 from sqlalchemy import event
 from sqlalchemy.ext.asyncio import AsyncEngine
 
-from config.constants import PERF_LOGGER_NAME
+from config.constants import DISCORD_DOMAINS, LEETCODE_DOMAINS, PERF_LOGGER_NAME
 
 logger = logging.getLogger(PERF_LOGGER_NAME)
 
@@ -90,10 +90,6 @@ class LatencyTimingTree(app_commands.CommandTree):
         interaction.extras[START_KEY] = time.perf_counter()
         interaction.extras[BREAKDOWN_KEY] = start_breakdown()
         return await super().interaction_check(interaction)
-
-
-DISCORD_DOMAINS = ("discord.com", "discordapp.com", "discordapp.net", "discord.gg")
-LEETCODE_DOMAINS = ("leetcode.com",)
 
 
 def _in_domains(host: str, domains: tuple[str, ...]) -> bool:
