@@ -44,6 +44,8 @@ THEME_COLOR = discord.Color.green()
 LOG_DIR = "logs"
 BOT_LOG_FILE_NAME = "bot.log"
 SQLALCHEMY_LOG_FILE_NAME = "sqlalchemy.log"
+PERF_LOG_FILE_NAME = "perf.log"
+PERF_LOGGER_NAME = "utils.perf"
 
 BOT_NAME = "LeetCodeBot"
 

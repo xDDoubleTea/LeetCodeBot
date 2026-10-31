@@ -6,6 +6,9 @@ interaction the command tree accepts. `log_command_latency` reads that stamp
 back when the command finishes and logs one line per invocation, reporting both
 the time spent inside the bot and the time since Discord created the
 interaction.
+
+The lines go to `logs/perf.log`, which never rotates, as well as to the console
+and `logs/bot.log`.
 """
 
 import logging
@@ -15,7 +18,9 @@ from datetime import datetime
 from discord import Interaction, app_commands
 from discord.utils import utcnow
 
-logger = logging.getLogger(__name__)
+from config.constants import PERF_LOGGER_NAME
+
+logger = logging.getLogger(PERF_LOGGER_NAME)
 
 START_KEY = "t0"
 
