@@ -92,12 +92,28 @@ class LatencyTimingTree(app_commands.CommandTree):
         return await super().interaction_check(interaction)
 
 
+DISCORD_DOMAINS = ("discord.com", "discordapp.com", "discordapp.net", "discord.gg")
+LEETCODE_DOMAINS = ("leetcode.com",)
+
+
+def _in_domains(host: str, domains: tuple[str, ...]) -> bool:
+    return any(host == domain or host.endswith(f".{domain}") for domain in domains)
+
+
 def http_category(host: str | None) -> str:
-    """The breakdown category for a request to `host`."""
-    host = (host or "").lower()
-    if host.endswith(("discord.com", "discordapp.com")):
+    """
+    The breakdown category for a request to `host`.
+
+    A host belongs to a domain when it is the domain or one of its subdomains.
+    Discord serves its REST API, interaction responses and webhooks from
+    discord.com, attachments from cdn.discordapp.com and media.discordapp.net,
+    and the gateway from gateway.discord.gg. Every LeetCode request the bot
+    makes goes to leetcode.com.
+    """
+    host = (host or "").lower().rstrip(".")
+    if _in_domains(host, DISCORD_DOMAINS):
         return "discord"
-    if host.endswith("leetcode.com"):
+    if _in_domains(host, LEETCODE_DOMAINS):
         return "leetcode"
     return "http"
 
