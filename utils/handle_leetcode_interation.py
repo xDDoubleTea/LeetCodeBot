@@ -8,6 +8,7 @@ from core.leetcode_api import FetchError
 from core.leetcode_problem import ProblemNotFound
 from models.leetcode import ThreadCreationEnum
 from utils.custom_exceptions import ForumChannelNotFound
+from utils.perf import measure
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +30,8 @@ def handle_leetcode_interaction(is_daily: bool = False):
             try:
                 assert interaction.guild
 
-                problem_with_tags = await func(self, interaction, *args, **kwargs)
+                with measure("lookup"):
+                    problem_with_tags = await func(self, interaction, *args, **kwargs)
 
                 if not problem_with_tags:
                     if is_daily:
