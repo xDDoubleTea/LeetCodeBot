@@ -41,6 +41,7 @@ from utils.embed_presenters import (
     get_user_info_embed,
 )
 from utils.handle_leetcode_interation import handle_leetcode_interaction
+from utils.perf import annotate
 from utils.tag_transformer import TagTransformer
 from view.pagination_view import (
     AllTagsPaginationView,
@@ -570,6 +571,7 @@ class LeetCode(commands.Cog):
         try:
             link = None
             if leetcode_username is None:
+                annotate(interaction, "linked_user_id", interaction.user.id)
                 link = await self.bot.leetcode_discord_link_manager.get_link_with_discord_user_id(
                     discord_user_id=interaction.user.id
                 )
@@ -616,6 +618,7 @@ class LeetCode(commands.Cog):
         try:
             link = None
             if leetcode_username is None:
+                annotate(interaction, "linked_user_id", interaction.user.id)
                 link = await self.bot.leetcode_discord_link_manager.get_link_with_discord_user_id(
                     discord_user_id=interaction.user.id
                 )

@@ -14,19 +14,23 @@ runs, time is added to it from three sources:
   puts around the problem lookup of `/problem`, `/daily` and `/random`.
 
 `log_command_latency` logs one line per completed command with the handler
-and end-to-end times followed by the breakdown. The lines go to
+and end-to-end times, the breakdown, any fields a command added with
+`annotate`, and the arguments the user passed as `arg_<name>` fields. Values
+containing spaces or quotes are quoted for `shlex.split`. The lines go to
 `logs/perf.log`, which never rotates, as well as to the console and
 `logs/bot.log`.
 """
 
 import logging
+import shlex
 import time
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass, field
 from datetime import datetime
 from types import SimpleNamespace
+from typing import Any
 
 import aiohttp
 from discord import Interaction, app_commands
@@ -40,6 +44,7 @@ logger = logging.getLogger(PERF_LOGGER_NAME)
 
 START_KEY = "t0"
 BREAKDOWN_KEY = "breakdown"
+ANNOTATIONS_KEY = "perf_fields"
 REPORTED_CATEGORIES = ("discord", "db", "leetcode")
 _QUERY_STARTS_KEY = "perf_query_starts"
 
@@ -201,18 +206,44 @@ def format_breakdown(breakdown: Breakdown) -> str:
     return " ".join(fields)
 
 
+def annotate(interaction: Interaction, key: str, value: Any) -> None:
+    """Add a `key=value` field to the interaction's latency line."""
+    interaction.extras.setdefault(ANNOTATIONS_KEY, {})[key] = value
+
+
+def _field_value(value: Any) -> str:
+    """A value as one shell-style word: an object's id, else its text, quoted."""
+    if hasattr(value, "id"):
+        value = value.id
+    text = " ".join(str(value).splitlines())
+    return shlex.quote(text) if text else "''"
+
+
+def format_fields(fields: Iterable[tuple[str, Any]], prefix: str = "") -> str:
+    """`key=value` fields, skipping values that are None."""
+    return " ".join(
+        f"{prefix}{key}={_field_value(value)}"
+        for key, value in fields
+        if value is not None
+    )
+
+
 def format_latency(
     command: str,
     handler: float | None,
     e2e: float,
     breakdown: Breakdown | None = None,
+    annotations: dict[str, Any] | None = None,
+    arguments: Iterable[tuple[str, Any]] = (),
 ) -> str:
     """The log line for one completed command."""
     handler_repr = "?" if handler is None else f"{handler:.1f}"
-    line = f"latency command={command} handler_ms={handler_repr} e2e_ms={e2e:.1f}"
+    parts = [f"latency command={command} handler_ms={handler_repr} e2e_ms={e2e:.1f}"]
     if breakdown is not None:
-        line += " " + format_breakdown(breakdown)
-    return line
+        parts.append(format_breakdown(breakdown))
+    parts.append(format_fields((annotations or {}).items()))
+    parts.append(format_fields(arguments, prefix="arg_"))
+    return " ".join(part for part in parts if part)
 
 
 def log_command_latency(
@@ -226,5 +257,7 @@ def log_command_latency(
             handler_ms(interaction),
             e2e_ms(interaction.created_at),
             interaction.extras.get(BREAKDOWN_KEY),
+            interaction.extras.get(ANNOTATIONS_KEY),
+            interaction.namespace,
         )
     )
