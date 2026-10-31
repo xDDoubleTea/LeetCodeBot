@@ -3,7 +3,13 @@ import logging.handlers
 import os
 import sys
 
-from config.constants import BOT_LOG_FILE_NAME, LOG_DIR, SQLALCHEMY_LOG_FILE_NAME
+from config.constants import (
+    BOT_LOG_FILE_NAME,
+    LOG_DIR,
+    PERF_LOG_FILE_NAME,
+    PERF_LOGGER_NAME,
+    SQLALCHEMY_LOG_FILE_NAME,
+)
 
 
 def setup_logger(log_level: int = logging.INFO):
@@ -51,3 +57,9 @@ def setup_logger(log_level: int = logging.INFO):
 
     db_logger.addHandler(db_file_handler)
     db_logger.addHandler(console_handler)
+
+    perf_file_handler = logging.FileHandler(
+        filename=os.path.join(log_dir, PERF_LOG_FILE_NAME), encoding="utf-8"
+    )
+    perf_file_handler.setFormatter(formatter)
+    logging.getLogger(PERF_LOGGER_NAME).addHandler(perf_file_handler)
