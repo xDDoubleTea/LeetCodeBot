@@ -73,6 +73,8 @@ Generate revisions against a database built by migrations. The deployed database
 - Known typo in a public attribute: `bot.leetcode_problem_manger`.
 - No inline comments unless specified in the prompt. Docs strings should use doc-style skill.
 
+**Don't publish identifiers the repository doesn't already contain**: in PR descriptions, issues, commit messages, code comments or docs. This repository is public. That covers Discord user ids, LeetCode usernames, and ids or names taken from production logs, `perf.log` or the database; use a placeholder such as `123456789012345678` or `some-user`. Ids already committed are fine to use: the owner's Discord id `398444155132575756` (`DEV_ID`) and `MY_GUILD`, both in `config/constants.py`. To check any other value, `git grep -n <value>` from the repository root: no match means it isn't public yet.
+
 Filing an issue: use the templates in `.github/ISSUE_TEMPLATE/` — `bug_report.md` or
 `feature_request.md` — and keep their headings rather than inventing a structure.
 `gh issue create` does **not** apply them on its own. `--template` does, but only

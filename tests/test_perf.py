@@ -1,3 +1,4 @@
+import shlex
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 
@@ -201,3 +202,52 @@ class TestInteractionCheckBreakdown:
         await tree.interaction_check(interaction)
 
         assert interaction.extras[perf.BREAKDOWN_KEY] is perf._current.get()
+
+
+class TestFormatFields:
+    """Arguments and annotations become one shell-style word per field."""
+
+    @pytest.mark.parametrize(
+        ("value", "expected"),
+        [
+            pytest.param(268, "arg_x=268", id="int"),
+            pytest.param("Hard", "arg_x=Hard", id="plain-text"),
+            pytest.param("two sum", "arg_x='two sum'", id="space"),
+            pytest.param("it's", "arg_x='it'\"'\"'s'", id="quote"),
+            pytest.param("a\nb", "arg_x='a b'", id="newline"),
+            pytest.param("", "arg_x=''", id="empty"),
+            pytest.param(True, "arg_x=True", id="bool"),
+            pytest.param(SimpleNamespace(id=42, name="forum"), "arg_x=42", id="object"),
+        ],
+    )
+    def test_renders_a_value(self, value, expected):
+        assert perf.format_fields([("x", value)], prefix="arg_") == expected
+
+    def test_skips_values_that_are_none(self):
+        assert perf.format_fields([("a", None), ("b", 1)]) == "b=1"
+
+    def test_round_trips_through_shlex(self):
+        fields = perf.format_fields([("title", "two sum"), ("q", "it's")])
+
+        assert shlex.split(fields) == ["title=two sum", "q=it's"]
+
+
+class TestAnnotate:
+    def test_annotations_and_arguments_end_the_line(self):
+        interaction = SimpleNamespace(extras={})
+        perf.annotate(interaction, "linked_user_id", 1234)
+
+        line = perf.format_latency(
+            "user-info",
+            10.0,
+            20.0,
+            annotations=interaction.extras[perf.ANNOTATIONS_KEY],
+            arguments=[("limit", 5)],
+        )
+
+        assert line.endswith("e2e_ms=20.0 linked_user_id=1234 arg_limit=5")
+
+    def test_a_line_without_extras_keeps_its_old_shape(self):
+        line = perf.format_latency("ping", 1.0, 2.0)
+
+        assert line == "latency command=ping handler_ms=1.0 e2e_ms=2.0"
